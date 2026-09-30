@@ -1,0 +1,42 @@
+{% extends "panel/base.html" %}{% load panel_tags %}
+{% block title %}Saboqlar{% endblock %}
+{% block content %}
+<header class="p-head"><h1>Saboqlar</h1><a class="p-btn" href="{% url 'panel:lesson_new' %}">+ Yangi saboq</a></header>
+
+<section class="p-card flush">
+  <table class="p-table rows">
+    <thead><tr><th>#</th><th>Mavzu</th><th>Video</th><th>Amal turi</th><th class="r">Yakunlaganlar</th><th>Holat</th><th></th></tr></thead>
+    <tbody>
+    {% for l in items %}
+      <tr>
+        <td><b>{{ l.number }}</b></td>
+        <td><a href="{% url 'panel:lesson_edit' l.pk %}"><b>{{ l.title }}</b></a><br><span class="p-muted">{{ l.published_on|date:"d.m.Y"|default:"sana yo'q" }}</span></td>
+        <td>{% if l.youtube_id %}<a class="yt-mini" href="https://youtu.be/{{ l.youtube_id }}" target="_blank" rel="noopener noreferrer"><img src="https://i.ytimg.com/vi/{{ l.youtube_id }}/default.jpg" alt="" loading="lazy"></a>{% else %}<span class="tag orange">video yo'q</span>{% endif %}</td>
+        <td>{{ l.get_task_type_display }}</td>
+        <td class="r">{{ l.done|num }}</td>
+        <td>
+          <form method="post" action="{% url 'panel:lesson_action' l.pk %}" class="inline"
+                data-confirm="{% if l.is_published %}Saboq foydalanuvchilardan yashiriladi.{% else %}Saboq barcha foydalanuvchilarga ko'rinadi.{% endif %}"
+                data-confirm-title="{% if l.is_published %}Yashirish{% else %}Nashr qilish{% endif %}" data-confirm-ok="Ha">{% csrf_token %}
+            <input type="hidden" name="action" value="toggle">
+            <button class="tag-btn {% if l.is_published %}green{% endif %}" title="Holatni almashtirish">{% if l.is_published %}nashr qilingan{% else %}yashirin{% endif %}</button>
+          </form>
+        </td>
+        <td class="r nowrap">
+          <a class="p-btn ghost sm" href="{% url 'panel:lesson_preview' l.pk %}">Ko'rish</a>
+          <a class="p-btn ghost sm" href="{% url 'panel:lesson_edit' l.pk %}">Tahrirlash</a>
+          {% if l.is_published %}
+          <form method="post" action="{% url 'panel:lesson_announce' l.pk %}" class="inline"
+                data-confirm="«{{ l.title }}» haqida bot orqali barcha foydalanuvchilarga xabar yuboriladi. Buni ortga qaytarib bo'lmaydi."
+                data-confirm-title="E'lon qilish" data-confirm-ok="Ha, yuborish">{% csrf_token %}
+            <button class="p-btn sm">E'lon qilish</button></form>
+          {% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="7" class="p-muted">Hali saboq yo'q</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

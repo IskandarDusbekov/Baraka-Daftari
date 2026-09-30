@@ -1,0 +1,68 @@
+{% extends "panel/base.html" %}{% load panel_tags %}
+{% block title %}Foydalanuvchilar{% endblock %}
+{% block content %}
+<header class="p-head"><h1>Foydalanuvchilar</h1>
+  <div class="p-actions"><span class="p-muted">{{ page.paginator.count|num }} ta</span>
+    {% if request.user.is_superuser %}<a class="p-btn ghost sm" href="?{{ params }}&export=csv">CSV yuklab olish</a>{% endif %}</div>
+</header>
+
+<form class="p-filters" method="get">
+  <input name="q" value="{{ q }}" placeholder="Ism, @username, Telegram ID yoki UUID">
+  <select name="status">
+    <option value="">Hammasi</option>
+    <option value="active7" {% if status == 'active7' %}selected{% endif %}>7 kunda faol</option>
+    <option value="inactive30" {% if status == 'inactive30' %}selected{% endif %}>30 kundan beri kirmagan</option>
+    <option value="loyal" {% if status == 'loyal' %}selected{% endif %}>Doimiy (10+ marta kirgan)</option>
+    <option value="no_income" {% if status == 'no_income' %}selected{% endif %}>Daromadni sozlamagan</option>
+    <option value="rated" {% if status == 'rated' %}selected{% endif %}>Baho qoldirgan</option>
+    <option value="blocked" {% if status == 'blocked' %}selected{% endif %}>Botni bloklagan</option>
+    <option value="disabled" {% if status == 'disabled' %}selected{% endif %}>O'chirilgan</option>
+  </select>
+  <select name="currency">
+    <option value="">Barcha valyuta</option>
+    {% for code, label in currencies %}<option value="{{ code }}" {% if currency == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <select name="sort">
+    <option value="new" {% if sort == 'new' %}selected{% endif %}>Yangilari</option>
+    <option value="seen" {% if sort == 'seen' %}selected{% endif %}>Oxirgi kirgan</option>
+    <option value="visits" {% if sort == 'visits' %}selected{% endif %}>Eng ko'p kirgan</option>
+    <option value="old" {% if sort == 'old' %}selected{% endif %}>Eskilari</option>
+  </select>
+  <button class="p-btn" type="submit">Qidirish</button>
+  {% if q or status or currency %}<a class="p-btn ghost" href="{% url 'panel:users' %}">Tozalash</a>{% endif %}
+</form>
+
+<section class="p-card flush">
+  <table class="p-table rows">
+    <thead><tr><th>Foydalanuvchi</th><th>Telegram ID</th><th>Ro'yxatdan</th><th>Oxirgi kirish</th><th class="r">Kirish</th><th>Daromad</th><th class="r">Saboq</th><th>Baho</th><th>Holat</th></tr></thead>
+    <tbody>
+    {% for u in page %}
+      <tr data-href="{% url 'panel:user' u.uid %}">
+        <td><a href="{% url 'panel:user' u.uid %}"><b>{{ u.display_name }}</b></a>{% if u.username %}<br><span class="p-muted">@{{ u.username }}</span>{% endif %}</td>
+        <td class="mono">{{ u.tg_id }}</td>
+        <td>{{ u.created_at|date:"d.m.Y" }}</td>
+        <td>{{ u.last_seen|timesince }} oldin</td>
+        <td class="r">{{ u.visits|num }}</td>
+        <td>{% if u.income_type == 'salary' %}{{ u.monthly_income|money:u.currency }}{% elif u.income_type == 'irregular' %}o'zgaruvchan{% else %}<span class="p-muted">—</span>{% endif %}</td>
+        <td class="r">{{ u.lessons_done|default:0 }}</td>
+        <td>{% if u.rating %}<span class="stars sm">{{ u.rating }} ★</span>{% else %}<span class="p-muted">—</span>{% endif %}</td>
+        <td>
+          {% if not u.is_active %}<span class="tag red">o'chirilgan</span>{% endif %}
+          {% if u.bot_blocked %}<span class="tag orange">bot bloklangan</span>{% elif u.bot_started %}<span class="tag green">bot</span>{% endif %}
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="9" class="p-muted">Hech kim topilmadi</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if page.has_other_pages %}
+<nav class="p-pager">
+  {% if page.has_previous %}<a href="?{{ params }}&page={{ page.previous_page_number }}">← Oldingi</a>{% endif %}
+  <span>{{ page.number }} / {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?{{ params }}&page={{ page.next_page_number }}">Keyingi →</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

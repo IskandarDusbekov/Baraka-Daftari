@@ -1,0 +1,74 @@
+{% extends "panel/base.html" %}
+{% block title %}SEO{% endblock %}
+{% block content %}
+<header class="p-head"><h1>SEO va qidiruv tizimlari</h1>
+  <div class="p-actions">
+    <a class="p-btn ghost sm" href="{{ base }}/robots.txt" target="_blank" rel="noopener">robots.txt</a>
+    <a class="p-btn ghost sm" href="{{ base }}/sitemap.xml" target="_blank" rel="noopener">sitemap.xml</a>
+  </div>
+</header>
+
+<section class="p-card">
+  <div class="p-card-head"><h2>Tekshiruv</h2></div>
+  <ul class="checklist">
+    {% for label, ok, hint in checks %}
+    <li class="{% if ok %}ok{% else %}bad{% endif %}"><span class="dot"></span><b>{{ label }}</b>{% if not ok %}<small>{{ hint }}</small>{% endif %}</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<div class="p-grid2">
+  <section class="p-card">
+    <div class="p-card-head"><h2>Google'da sayt egaligini tasdiqlash</h2></div>
+    <ol class="p-list steps">
+      <li><a href="https://search.google.com/search-console" target="_blank" rel="noopener">Google Search Console</a> → «Mulk qo'shish» → <b>URL prefiksi</b> → sayt manzilini yozing.</li>
+      <li>«<b>HTML fayl</b>» usulini tanlang va <span class="mono">google….html</span> faylni yuklab oling.</li>
+      <li>Faylni shu yerga yuklang — u darhol <span class="mono">{{ base }}/google….html</span> manzilida ochiladi.</li>
+      <li>Search Console'ga qaytib «<b>Tasdiqlash</b>» ni bosing, keyin «Sitemaps» bo'limiga <span class="mono">sitemap.xml</span> ni qo'shing.</li>
+    </ol>
+    <form method="post" enctype="multipart/form-data" class="p-form upload-box">{% csrf_token %}
+      <input type="hidden" name="section" value="file">
+      {{ upload.file }}
+      {% for e in upload.file.errors %}<small class="err">{{ e }}</small>{% endfor %}
+      <button class="p-btn" type="submit">Faylni yuklash</button>
+    </form>
+    {% if files %}
+    <table class="p-table mt">
+      {% for f in files %}
+      <tr><td><a class="mono" href="{{ base }}/{{ f.filename }}" target="_blank" rel="noopener">/{{ f.filename }}</a><br><span class="p-muted small">{{ f.created_at|date:"d.m.Y H:i" }}</span></td>
+        <td class="r"><form method="post" action="{% url 'panel:seo_file_delete' f.pk %}" class="inline"
+              data-confirm="Fayl o'chirilsa, Google tasdiqlash bekor bo'lishi mumkin." data-confirm-title="{{ f.filename }}" data-confirm-ok="O'chirish" data-danger>{% csrf_token %}
+          <button class="p-btn ghost sm">O'chirish</button></form></td></tr>
+      {% endfor %}
+    </table>
+    {% endif %}
+    <p class="p-muted small mt">Yandex (<span class="mono">yandex_….html</span>) va Bing (<span class="mono">BingSiteAuth.xml</span>) fayllari ham shu yerga yuklanadi.</p>
+  </section>
+
+  <section class="p-card">
+    <div class="p-card-head"><h2>Google natijasida shunday ko'rinadi</h2></div>
+    <div class="serp" id="serp">
+      <span class="serp-url">{{ base }}</span>
+      <b class="serp-title" id="serp-title"></b>
+      <p class="serp-desc" id="serp-desc"></p>
+    </div>
+  </section>
+</div>
+
+<form method="post" class="p-card p-form wide" data-dirty-guard>
+  {% csrf_token %}
+  <div class="p-card-head"><h2>Meta-teglar</h2></div>
+  {% if form.non_field_errors %}<p class="p-msg error">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+  <div class="p-grid2 tight">
+    {% for field in form %}
+      <label class="{% if field.name in 'description robots_extra og_description' %}full{% endif %} {% if field.name == 'allow_indexing' %}check{% endif %}">
+        {% if field.name == 'allow_indexing' %}{{ field }}<span>{{ field.label }}</span>
+        {% else %}<span>{{ field.label }}</span>{{ field }}{% endif %}
+        {% if field.help_text %}<small class="p-muted">{{ field.help_text }}</small>{% endif %}
+        {% for e in field.errors %}<small class="err">{{ e }}</small>{% endfor %}
+      </label>
+    {% endfor %}
+  </div>
+  <button class="p-btn" type="submit">Saqlash</button>
+</form>
+{% endblock %}

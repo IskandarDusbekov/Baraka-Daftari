@@ -59,6 +59,7 @@ cover/
 *.log
 local_settings.py
 db.sqlite3
+staticfiles/
 db.sqlite3-journal
 
 # Flask stuff:
@@ -216,3 +217,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Lokal muharrir va Claude sozlamalari
+.idea/
+.claude/
+
+# Serverga yuklash arxivi
+*.tar.gz

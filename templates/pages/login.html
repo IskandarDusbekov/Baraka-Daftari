@@ -1,0 +1,47 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}Kirish — Elektron Baraka Daftari{% endblock %}
+{% block header %}{% endblock %}
+{% block tabbar %}{% endblock %}
+{% block content %}
+<div class="landing">
+  <section class="hero">
+    <img src="{% static 'img/logo.svg' %}" alt="" class="hero-logo">
+    <h1>Elektron <span>Baraka</span> Daftari</h1>
+    <p>Avval o'zingizga to'lash, xarajatlarni nazorat qilish va qarzdan qutulishni
+       haftalik saboqlar va kichik amaliy qadamlar bilan o'rganing.</p>
+  </section>
+
+  <button class="btn blue big" id="login-btn"><svg class="ic"><use href="#i-send"/></svg> Telegram orqali kirish</button>
+  <p class="center muted small">Parol shart emas — bot orqali bir bosishda kirasiz. Bepul.</p>
+
+  {% if dev_login %}
+  <form class="card dev-login" id="dev-form" autocomplete="on">
+    <div class="card-title"><h3><span class="h-ico purple"><svg class="ic"><use href="#i-lock"/></svg></span> Dasturchi kirishi</h3><span class="chip gold">DEV</span></div>
+    <label class="field"><span>Login</span><input class="input" name="username" autocomplete="username" required></label>
+    <label class="field mt"><span>Parol</span><input class="input" name="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn block mt" type="submit">Kirish</button>
+  </form>
+  {% endif %}
+
+  {% include "partials/disclaimer.html" %}
+
+  <section class="features">
+    <div class="feature"><span class="f-ico blue"><svg class="ic"><use href="#i-book"/></svg></span><b>Haftalik saboqlar</b><p>Har hafta yangi video, saboqlar va amaliy vazifalar</p></div>
+    <div class="feature"><span class="f-ico green"><svg class="ic"><use href="#i-safe"/></svg></span><b>O'zingga to'la</b><p>5, 10, 15, 20% — o'zingiz tanlaysiz, summa avtomatik</p></div>
+    <div class="feature"><span class="f-ico purple"><svg class="ic"><use href="#i-pie"/></svg></span><b>Xarajatlar</b><p>Pulingiz qayerga ketayotganini diagrammada ko'ring</p></div>
+    <div class="feature"><span class="f-ico orange"><svg class="ic"><use href="#i-snow"/></svg></span><b>Qor bo'lagi</b><p>Qarzlardan qutulishning aniq rejasi</p></div>
+  </section>
+
+  <section class="card">
+    <h3>Qanday ishlaydi?</h3>
+    <ol class="steps mt">
+      <li>Telegram orqali kiring — bot sizni taniydi.</li>
+      <li>Oylik olasizmi yoki yo'qmi — tanlang va necha foizini o'zingizga to'lashingizni belgilang.</li>
+      <li>Yangi saboq qo'shilganda bot xabar beradi.</li>
+      <li>Videoni ko'ring, vazifani ilova ichida bajaring va yulduzcha yig'ing.</li>
+    </ol>
+  </section>
+  <p class="footer-note">Asl g'oya muallifi: Abdukarim Mirzayev — «Baraka Daftari»</p>
+</div>
+{% endblock %}
+{% block script %}<script src="{% static 'js/login.js' %}"></script>{% endblock %}

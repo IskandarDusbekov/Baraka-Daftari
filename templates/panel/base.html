@@ -1,0 +1,42 @@
+{% load static %}<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Boshqaruv{% endblock %} — Baraka Daftari</title>
+  <link rel="icon" href="{% static 'img/logo.svg' %}" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/panel.css' %}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+{% include "partials/icons.html" %}
+<div class="p-shell">
+  <aside class="p-side">
+    <a class="p-brand" href="{% url 'panel:dashboard' %}"><img src="{% static 'img/logo.svg' %}" alt="">Boshqaruv</a>
+    <nav>
+      <a href="{% url 'panel:dashboard' %}" class="{% if nav == 'dashboard' %}on{% endif %}"><svg class="ic"><use href="#i-home"/></svg>Umumiy</a>
+      <a href="{% url 'panel:funnel' %}" class="{% if nav == 'funnel' %}on{% endif %}"><svg class="ic"><use href="#i-down"/></svg>Voronka</a>
+      <a href="{% url 'panel:users' %}" class="{% if nav == 'users' %}on{% endif %}"><svg class="ic"><use href="#i-users"/></svg>Foydalanuvchilar</a>
+      <a href="{% url 'panel:auth' %}" class="{% if nav == 'auth' %}on{% endif %}"><svg class="ic"><use href="#i-logout"/></svg>Kirishlar</a>
+      <a href="{% url 'panel:activity' %}" class="{% if nav == 'activity' %}on{% endif %}"><svg class="ic"><use href="#i-history"/></svg>Amallar</a>
+      <a href="{% url 'panel:lessons' %}" class="{% if nav == 'lessons' %}on{% endif %}"><svg class="ic"><use href="#i-book"/></svg>Saboqlar</a>
+      <a href="{% url 'panel:broadcasts' %}" class="{% if nav == 'broadcasts' %}on{% endif %}"><svg class="ic"><use href="#i-send"/></svg>Xabarlar</a>
+      <a href="{% url 'panel:feedback' %}" class="{% if nav == 'feedback' %}on{% endif %}"><svg class="ic"><use href="#i-star"/></svg>Baholar</a>
+      <a href="{% url 'panel:seo' %}" class="{% if nav == 'seo' %}on{% endif %}"><svg class="ic"><use href="#i-search"/></svg>SEO</a>
+      {% if request.user.is_superuser %}<a href="{% url 'admin:index' %}" class="muted-link"><svg class="ic"><use href="#i-file"/></svg>Ma'lumotlar bazasi</a>{% endif %}
+    </nav>
+    <div class="p-me">
+      <span>{{ request.user.username }}</span>
+      <form method="post" action="{% url 'panel:logout' %}">{% csrf_token %}<button type="submit">Chiqish</button></form>
+    </div>
+  </aside>
+  <main class="p-main">
+    {% if messages %}<div class="p-msgs">{% for m in messages %}<p class="p-msg {{ m.tags }}">{{ m }}</p>{% endfor %}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="{% static 'js/panel.js' %}"></script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+# /etc/systemd/system/baraka-web.service
+# gthread: har worker bir nechta so'rovni parallel bajaradi (API asosan DB kutadi).
+# Taxminiy: 4 yadroli VPS -> 5 worker x 4 thread = 20 ta bir vaqtdagi so'rov.
+[Unit]
+Description=Baraka Daftari - Django (Gunicorn)
+After=network.target postgresql.service redis-server.service
+
+[Service]
+User=baraka
+Group=www-data
+WorkingDirectory=/srv/baraka
+RuntimeDirectory=baraka
+UMask=0007
+ExecStart=/srv/baraka/.venv/bin/gunicorn config.wsgi:application \
+    --worker-class gthread --workers 5 --threads 4 \
+    --max-requests 2000 --max-requests-jitter 200 \
+    --bind unix:/run/baraka/gunicorn.sock --access-logfile - --timeout 30
+Restart=always
+
+# Jarayonni tizimdan ajratish: hujumchi Django orqali kirsa ham serverni buza olmasin
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

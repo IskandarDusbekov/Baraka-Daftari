@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}{{ number }}-saboq — Baraka Daftari{% endblock %}
+{% block script %}<script>window.BARAKA.number = {{ number }};</script><script src="{% static 'js/lesson.js' %}"></script>{% endblock %}

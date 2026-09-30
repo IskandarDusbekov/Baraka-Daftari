@@ -1,0 +1,233 @@
+{% load static %}<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ seo.title }}</title>
+  <meta name="description" content="{{ seo.description }}">
+  {% if seo.keywords %}<meta name="keywords" content="{{ seo.keywords }}">{% endif %}
+  <meta name="robots" content="{% if seo.allow_indexing %}index, follow{% else %}noindex, nofollow{% endif %}">
+  <link rel="canonical" href="{{ seo.canonical }}">
+  <meta name="theme-color" content="#f6efe0">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="uz_UZ">
+  <meta property="og:site_name" content="Baraka Daftari">
+  <meta property="og:url" content="{{ seo.canonical }}">
+  <meta property="og:title" content="{{ seo.og_title }}">
+  <meta property="og:description" content="{{ seo.og_description }}">
+  <meta property="og:image" content="{{ seo.base_url }}{% static 'img/logo-640.png' %}">
+  <meta name="twitter:card" content="summary">
+  {% if seo.google_verification %}<meta name="google-site-verification" content="{{ seo.google_verification }}">{% endif %}
+  {% if seo.yandex_verification %}<meta name="yandex-verification" content="{{ seo.yandex_verification }}">{% endif %}
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Baraka Daftari","url":"{{ seo.base_url|escapejs }}/","applicationCategory":"FinanceApplication","operatingSystem":"Telegram, Web","inLanguage":"uz","offers":{"@type":"Offer","price":"0","priceCurrency":"UZS"},"description":"{{ seo.description|escapejs }}"}</script>
+  {% if seo.analytics_id %}
+  <script async src="https://www.googletagmanager.com/gtag/js?id={{ seo.analytics_id }}"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','{{ seo.analytics_id|escapejs }}');</script>
+  {% endif %}
+  <link rel="icon" href="{% static 'img/logo.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'img/logo-640.png' %}">
+  <script>
+    // Kirgan foydalanuvchi yoki Telegram Mini App — to'g'ridan-to'g'ri ilovaga
+    (function () {
+      var tg = location.hash.indexOf('tgWebAppData') !== -1;
+      var token = null;
+      try { token = localStorage.getItem('baraka_token'); } catch (e) {}
+      if (tg || token) location.replace('/asosiy/' + (tg ? location.hash : ''));
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,800&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/landing.css' %}">
+</head>
+<body>
+{% include "partials/icons.html" %}
+{% with bot_link="https://t.me/"|add:bot_username %}
+
+<header class="l-head">
+  <a class="l-brand" href="/"><img src="{% static 'img/logo.svg' %}" alt="">Baraka <em>Daftari</em></a>
+  <nav>
+    <a href="#qonunlar">Saboqlar</a>
+    <a href="#hisob">Hisoblang</a>
+    <a href="#savollar">Savollar</a>
+    <a class="l-login" href="/kirish/">Kirish</a>
+  </nav>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-text">
+      <p class="hand tag">Abdukarim Mirzayevning «Baraka Daftari» saboqlari asosida</p>
+      <h1>Oylik tushadi.<br>Ikki haftada tugaydi.<br><span class="ink">Qayoqqa?</span></h1>
+      <p class="lead">Bu savolga javob — daftarda. Xarajatni yozasiz, avval o'zingizga to'laysiz,
+        qarzdan reja bilan chiqasiz. Hammasi telefoningizda, Telegram ichida.</p>
+      <div class="cta">
+        {% if bot_username %}<a class="btn-ink" href="{{ bot_link }}" rel="noopener"><svg class="ic"><use href="#i-send"/></svg> Telegram'da boshlash</a>{% endif %}
+        <a class="{% if bot_username %}btn-line{% else %}btn-ink{% endif %}" href="/kirish/">Saytda ochish</a>
+      </div>
+      <p class="fine">Bepul · Reklamasiz · Ro'yxatdan o'tish Telegram orqali, parolsiz</p>
+    </div>
+
+    <figure class="notebook" aria-label="Daftar sahifasi namunasi">
+      <span class="tape"></span>
+      <div class="page">
+        <p class="date hand">1-oktabr</p>
+        <ul class="ledger hand">
+          <li><span>Oylik</span><b>8 000 000</b></li>
+          <li class="good"><span>Avval o'zimga — 10%</span><b>800 000 ✓</b></li>
+          <li><span>Ijara</span><b>3 000 000</b></li>
+          <li><span>Oziq-ovqat</span><b>1 450 000</b></li>
+          <li class="havas"><span><s>Kofe, gazak, taksi</s></span><b>620 000</b></li>
+          <li class="note-row"><span>↑ teshik shu yerda!</span></li>
+          <li class="debt"><span>Kredit (+20%)</span><b>1 400 000</b></li>
+          <li class="total"><span>Qoldi</span><b>730 000</b></li>
+        </ul>
+      </div>
+    </figure>
+  </section>
+
+  <!-- QUOTE -->
+  <section class="quote">
+    <p>«Xarajatni yozmaguningizcha,<br>uni boshqara olmaysiz.»</p>
+    <span class="hand">— 2-saboqdan</span>
+  </section>
+
+  <!-- LESSONS AS TABLE OF CONTENTS -->
+  <section class="toc" id="qonunlar">
+    <div class="sec-head">
+      <p class="hand">Mundarija</p>
+      <h2>Har hafta — bitta qonun</h2>
+      <p>Har bir video bo'yicha qisqa mazmun, asosiy saboqlar va shu haftada nima qilish kerakligi.
+        Vazifani ilovaning o'zida bajarasiz.</p>
+    </div>
+    <ol class="chapters">
+      {% for l in lessons %}
+      <li>
+        <span class="num">{{ l.number|stringformat:"02d" }}</span>
+        <div>
+          <h3>{{ l.title }}</h3>
+          <p>{{ l.key_points_list.0|default:l.summary|truncatechars:140 }}</p>
+        </div>
+        {% if l.youtube_id %}<a class="watch" href="https://www.youtube.com/watch?v={{ l.youtube_id }}" target="_blank" rel="noopener" aria-label="{{ l.number }}-saboq videosi"><svg class="ic"><use href="#i-play"/></svg></a>{% endif %}
+      </li>
+      {% empty %}
+      <li><span class="num">01</span><div><h3>Birinchi saboq tez orada</h3><p>Yangi video chiqishi bilan shu yerda paydo bo'ladi.</p></div></li>
+      {% endfor %}
+      <li class="next"><span class="num">…</span><div><h3>Keyingi qonun</h3><p>Yangi video chiqqach qo'shiladi — bot xabar beradi.</p></div></li>
+    </ol>
+  </section>
+
+  <!-- CALCULATOR -->
+  <section class="calc" id="hisob">
+    <div class="sec-head">
+      <p class="hand">O'zingiz hisoblang</p>
+      <h2>Oyligingizni yozing</h2>
+      <p>4-saboqdagi Sobir hojining qoidasi: qarz bo'lsa, topganingiz uch bo'lakka bo'linadi.</p>
+    </div>
+    <div class="calc-box">
+      <label class="calc-input">
+        <span>Oyiga qancha topasiz?</span>
+        <input id="lc-income" inputmode="numeric" value="8 000 000" autocomplete="off">
+        <em>so'm</em>
+      </label>
+      <div class="split" aria-hidden="true">
+        <i class="s70">70%</i><i class="s20">20%</i><i class="s10">10%</i>
+      </div>
+      <dl class="split-legend">
+        <div><dt><span class="dot s70"></span>Ro'zg'orga</dt><dd id="lc-70"></dd></div>
+        <div><dt><span class="dot s20"></span>Qarzga qo'shimcha</dt><dd id="lc-20"></dd></div>
+        <div><dt><span class="dot s10"></span>O'zingizga</dt><dd id="lc-10"></dd></div>
+      </dl>
+      <p class="calc-note hand" id="lc-year"></p>
+    </div>
+  </section>
+
+  <!-- INSIDE THE APP -->
+  <section class="inside">
+    <div class="sec-head">
+      <p class="hand">Ilova ichida</p>
+      <h2>Raqamlar qo'rqitmasin — ular sizga ishlaydi</h2>
+    </div>
+    <div class="shots">
+      <figure>
+        <div class="phone">
+          <div class="m-balance">
+            <small>Oktabr oyida qolgan pulingiz</small>
+            <strong>730 000 so'm</strong>
+            <div class="m-bar"><i style="width:63%"></i></div>
+            <small>Daromadning 63% i sarflandi</small>
+          </div>
+          <div class="m-row"><span>Xarajat</span><span>+ Kirim</span></div>
+        </div>
+        <figcaption><b>Qolgan pul — har doim ko'z oldingizda.</b> Ijara kabi majburiy to'lovlar oldindan ayiriladi.</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="m-card">
+            <small>Avtokredit · yillik 25% · 3 yil</small>
+            <strong>Oyiga 1 987 992</strong>
+            <div class="m-win">+20% bilan <b>28 oyda</b> tugaydi — <b>5,2 mln</b> yutasiz</div>
+          </div>
+        </div>
+        <figcaption><b>Kredit kalkulyatori.</b> Bank foizi bilan jami qancha, qo'shib to'lasangiz qancha yutasiz.</figcaption>
+      </figure>
+      <figure>
+        <div class="phone">
+          <div class="m-card">
+            <small>Zarur · Kerak · Havas</small>
+            <div class="m-need"><i style="width:58%;background:#2f8f5b"></i><i style="width:27%;background:#3a6fb0"></i><i style="width:15%;background:#d9822b"></i></div>
+            <p class="m-tip">Bu oy havasga <b>620 000</b> ketdi. Chek qo'ying, lekin o'ldirmang.</p>
+          </div>
+        </div>
+        <figcaption><b>Xurjunning teshigi.</b> Har xarajatni belgilaysiz — pul qayerdan oqayotgani ko'rinadi.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- HOW TO START -->
+  <section class="start">
+    <div class="sec-head">
+      <p class="hand">Boshlash oson</p>
+      <h2>Uch qadam</h2>
+    </div>
+    <ol class="steps-hand">
+      <li><b>Botni oching.</b> Telegram'da START ni bosasiz — ro'yxatdan o'tish shu.</li>
+      <li><b>Oylik va foizni belgilang.</b> Oylik olasizmi, yo'qmi — va daromadning necha foizini o'zingizga to'laysiz.</li>
+      <li><b>Kuniga bir daqiqa.</b> Xarajatni yozing. Kechqurun bot eslatib turadi.</li>
+    </ol>
+    <div class="cta center">
+      {% if bot_username %}<a class="btn-ink" href="{{ bot_link }}" rel="noopener"><svg class="ic"><use href="#i-send"/></svg> Telegram'da boshlash</a>{% endif %}
+      <a class="{% if bot_username %}btn-line{% else %}btn-ink{% endif %}" href="/kirish/">Saytda ochish</a>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq" id="savollar">
+    <div class="sec-head"><p class="hand">Ko'p so'raladi</p><h2>Savollar</h2></div>
+    <details><summary>Bu pullikmi?</summary><p>Yo'q. Daftar bepul va reklamasiz.</p></details>
+    <details><summary>Bu tez boyish usulimi?</summary><p>Yo'q. Bu tez boyish usuli emas — boylikning ilmi. Natija intizomdan keladi: yozish, avval o'zingizga to'lash, qarzdan reja bilan chiqish.</p></details>
+    <details><summary>Bu diniy fatvomi?</summary><p>Yo'q. Loyiha ta'limiy xarakterga ega, diniy fatvo emas.</p></details>
+    <details><summary>Oylik olmayman, daromadim har xil — bo'ladimi?</summary><p>Bo'ladi. «Oylik olmayman» ni tanlaysiz, pul tushganda kirim yozasiz — tanlagan foizingiz har bir kirimdan hisoblanadi.</p></details>
+    <details><summary>Qarzim yo'q. Menga kerakmi?</summary><p>Albatta. Xarajatlarni yozish, zaxira (qo'riqchi pul) va o'sadigan pul — qarzi yo'qlar uchun ham asosiy qadam.</p></details>
+    <details><summary>Ma'lumotlarim kimga ko'rinadi?</summary><p>Sizga va loyiha ma'muriyatiga (texnik yordam va xizmatni yaxshilash uchun). Kirish Telegram orqali tasdiqlanadi; ma'lumotlaringiz uchinchi shaxslarga berilmaydi va sotilmaydi.</p></details>
+  </section>
+
+  <!-- DISCLAIMER -->
+  <section class="l-disclaimer">
+    <p class="caps">Ushbu loyiha Abdukarim Mirzayevning «Baraka Daftari» ko'rsatuvidan ilhomlangan holda, insonlarga qulaylik yaratish maqsadida ishlab chiqildi. Barcha huquqlar va asl g'oya muallifi Abdukarim Mirzayevga tegishli.</p>
+    <ul class="principles-line">
+      <li>Tez boyish usuli emas</li><li>Boylikning ilmi</li><li>Diniy fatvo emas</li><li>Ta'limiy asar</li>
+    </ul>
+  </section>
+</main>
+
+<footer class="l-foot">
+  <span>Baraka Daftari</span>
+  <a href="/kirish/">Kirish</a>
+  {% if bot_username %}<a href="{{ bot_link }}" rel="noopener">@{{ bot_username }}</a>{% endif %}
+</footer>
+{% endwith %}
+<script src="{% static 'js/landing.js' %}"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+{% extends "panel/base.html" %}{% load panel_tags %}
+{% block title %}Xabarlar{% endblock %}
+{% block head %}{% if sending %}<meta http-equiv="refresh" content="15">{% endif %}{% endblock %}
+{% block content %}
+<header class="p-head"><h1>Ommaviy xabarlar</h1></header>
+<p class="p-muted">Xabar navbatga qo'yiladi va bot fon rejimida ~25 xabar/soniya tezlikda yuboradi
+  (100 000 kishiga ~1 soat). Botni bloklaganlar va eslatmalarni o'chirganlarga yuborilmaydi.</p>
+
+<div class="p-grid2">
+  <form method="post" class="p-card p-form">
+    {% csrf_token %}
+    <div class="p-card-head"><h2>Yangi xabar</h2></div>
+    <label><span>Kimga</span>{{ form.audience }}</label>
+    <label><span>Matn</span>{{ form.text }}{% for e in form.text.errors %}<small class="err">{{ e }}</small>{% endfor %}</label>
+    <button class="p-btn" type="submit" onclick="return confirm('Xabar yuborilsinmi?')">Navbatga qo'yish</button>
+  </form>
+  <section class="p-card">
+    <div class="p-card-head"><h2>Saboq e'loni</h2></div>
+    <p class="p-muted">Yangi saboq qo'shganingizda «Saboqlar» bo'limida <b>E'lon qilish</b> tugmasini bosing —
+      bot hammaga video va «Daftarni ochish» tugmasi bilan xabar yuboradi.</p>
+    <a class="p-btn ghost mt" href="{% url 'panel:lessons' %}">Saboqlarga o'tish</a>
+  </section>
+</div>
+
+<section class="p-card flush">
+  <table class="p-table rows">
+    <thead><tr><th>Vaqt</th><th>Xabar</th><th>Kimga</th><th>Holat</th><th>Jarayon</th></tr></thead>
+    <tbody>
+    {% for b in items %}
+      <tr>
+        <td class="nowrap p-muted">{{ b.created_at|date:"d.m H:i" }}<br>{{ b.created_by }}</td>
+        <td>{% if b.lesson %}<b>Saboq e'loni:</b> {{ b.lesson.title }}{% else %}{{ b.text|truncatechars:90 }}{% endif %}</td>
+        <td>{{ b.get_audience_display }}</td>
+        <td>{% if b.status == 'done' %}<span class="tag green">{{ b.get_status_display }}</span>{% elif b.status == 'sending' %}<span class="tag blue">{{ b.get_status_display }}</span>{% else %}<span class="tag">{{ b.get_status_display }}</span>{% endif %}</td>
+        <td style="min-width:160px">
+          <div class="p-progress"><i style="width:{{ b.sent|add:b.failed|pct:b.total }}%"></i></div>
+          <span class="p-muted small">{{ b.sent|num }} yuborildi · {{ b.failed|num }} xato · {{ b.total|num }} jami</span>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="p-muted">Hali xabar yuborilmagan</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

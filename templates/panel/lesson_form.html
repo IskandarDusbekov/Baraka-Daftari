@@ -1,0 +1,72 @@
+{% extends "panel/base.html" %}
+{% block title %}{% if lesson %}{{ lesson.number }}-saboq{% else %}Yangi saboq{% endif %}{% endblock %}
+{% block content %}
+<header class="p-head">
+  <div><a class="p-back" href="{% url 'panel:lessons' %}">← Saboqlar</a>
+    <h1>{% if lesson %}{{ lesson.number }}-saboqni tahrirlash{% else %}Yangi saboq{% endif %}</h1></div>
+  {% if lesson %}<a class="p-btn ghost" href="{% url 'panel:lesson_preview' lesson.pk %}">Foydalanuvchi ko'rinishi</a>{% endif %}
+</header>
+
+<form method="post" class="p-form wide lesson-form" id="lesson-form" data-dirty-guard>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<p class="p-msg error">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+
+  <section class="p-card">
+    <div class="p-card-head"><h2><span class="step">1</span> Video</h2></div>
+    <div class="video-row">
+      <label class="grow"><span>{{ form.youtube_id.label }}</span>{{ form.youtube_id }}
+        <small class="p-muted">YouTube havolasini to'liq qo'ying — ID avtomatik ajratiladi.</small>
+        {% for e in form.youtube_id.errors %}<small class="err">{{ e }}</small>{% endfor %}</label>
+      <div class="yt-preview" id="yt-preview" data-empty="Video ko'rinishi shu yerda chiqadi"></div>
+    </div>
+    <div class="p-grid3 tight">
+      <label><span>{{ form.number.label }}</span>{{ form.number }}{% for e in form.number.errors %}<small class="err">{{ e }}</small>{% endfor %}</label>
+      <label><span>{{ form.published_on.label }}</span>{{ form.published_on }}{% for e in form.published_on.errors %}<small class="err">{{ e }}</small>{% endfor %}</label>
+      <label class="check">{{ form.is_published }}<span>{{ form.is_published.label }}</span></label>
+    </div>
+    <label><span>{{ form.title.label }}</span>{{ form.title }}{% for e in form.title.errors %}<small class="err">{{ e }}</small>{% endfor %}</label>
+  </section>
+
+  <section class="p-card">
+    <div class="p-card-head"><h2><span class="step">2</span> Mazmun</h2></div>
+    <label><span>{{ form.summary.label }}</span>{{ form.summary }}{% for e in form.summary.errors %}<small class="err">{{ e }}</small>{% endfor %}</label>
+    <label><span>{{ form.key_points.label }} <em class="p-muted" data-lines="id_key_points"></em></span>{{ form.key_points }}
+      <small class="p-muted">Har qator — alohida saboq. Boshidagi «-» yoki «•» belgilari avtomatik olib tashlanadi.</small></label>
+  </section>
+
+  <section class="p-card">
+    <div class="p-card-head"><h2><span class="step">3</span> Vazifa</h2></div>
+    <label><span>{{ form.tasks.label }} <em class="p-muted" data-lines="id_tasks"></em></span>{{ form.tasks }}
+      <small class="p-muted">Birinchi qator bot xabarida va bosh sahifada «Bugungi vazifa» bo'lib chiqadi.</small>
+      {% for e in form.tasks.errors %}<small class="err">{{ e }}</small>{% endfor %}</label>
+    <div class="p-grid2 tight">
+      <label><span>{{ form.task_type.label }}</span>{{ form.task_type }}<small class="p-muted">{{ form.task_type.help_text }}</small></label>
+      <label id="note-prompt-row"><span>{{ form.note_prompt.label }}</span>{{ form.note_prompt }}{% for e in form.note_prompt.errors %}<small class="err">{{ e }}</small>{% endfor %}</label>
+    </div>
+  </section>
+
+  <div class="form-bar">
+    <button class="p-btn" type="submit" name="then" value="list">Saqlash</button>
+    <button class="p-btn ghost" type="submit" name="then" value="preview">Saqlash va ko'rish</button>
+    <button class="p-btn ghost" type="submit" name="then" value="announce"
+            data-confirm="Saboq saqlanadi va bot barcha foydalanuvchilarga e'lon yuboradi. Buni ortga qaytarib bo'lmaydi."
+            data-confirm-title="Saqlash va e'lon qilish" data-confirm-ok="Ha, e'lon qilish">Saqlash va e'lon qilish</button>
+  </div>
+</form>
+
+{% if lesson %}
+<section class="p-card danger-zone">
+  <div class="p-card-head"><h2>Saboqni o'chirish</h2></div>
+  <form method="post" action="{% url 'panel:lesson_action' lesson.pk %}" class="p-form"
+        data-confirm="{{ lesson.number }}-saboq butunlay o'chiriladi{% if done_count %}, uni yakunlagan {{ done_count }} kishining natijasi ham yo'qoladi{% endif %}. Buni ortga qaytarib bo'lmaydi."
+        data-confirm-title="Saboqni o'chirish" data-confirm-ok="Ha, o'chirish" data-danger>{% csrf_token %}
+    <input type="hidden" name="action" value="delete">
+    {% if done_count %}
+      <p class="p-muted">Bu saboqni <b>{{ done_count }}</b> kishi yakunlagan. Vaqtincha olib qo'yish uchun «Foydalanuvchilarga ko'rinadi» belgisini olib tashlash kifoya. Baribir o'chirish uchun saboq raqamini yozing:</p>
+      <input name="confirm" inputmode="numeric" placeholder="{{ lesson.number }}" autocomplete="off" required>
+    {% endif %}
+    <button class="p-btn danger" type="submit">O'chirish</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

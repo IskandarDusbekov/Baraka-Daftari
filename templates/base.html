@@ -1,0 +1,56 @@
+{% load static %}<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Elektron Baraka Daftari{% endblock %}</title>
+  <meta name="description" content="Avval o'zingizga to'lash, xarajatlarni nazorat qilish va qarzdan qutulishni haftalik saboqlar bilan o'rganing.">
+  <meta name="theme-color" content="#f4f7fb">
+  <meta name="robots" content="{% if active == 'haqida' and seo.allow_indexing %}index, follow{% else %}noindex, nofollow{% endif %}">
+  <link rel="icon" href="{% static 'img/logo.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'img/logo-640.png' %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>window.BARAKA = { botUsername: "{{ bot_username|escapejs }}", page: "{{ active|default:''|escapejs }}" };</script>
+</head>
+<body>
+  {% include "partials/icons.html" %}
+
+  {% block header %}
+  <header class="topbar">
+    <a href="/asosiy/" class="brand"><img src="{% static 'img/logo.svg' %}" alt="" class="logo">Baraka Daftari</a>
+    <div class="top-actions">
+      <a href="/haqida/" class="icon-btn {% if active == 'haqida' %}on{% endif %}" aria-label="Loyiha haqida"><svg class="ic"><use href="#i-info"/></svg></a>
+      <a href="/sozlamalar/" class="icon-btn {% if active == 'sozlamalar' %}on{% endif %}" aria-label="Sozlamalar"><svg class="ic"><use href="#i-gear"/></svg></a>
+    </div>
+  </header>
+  {% endblock %}
+
+  <main class="page" id="page">
+    {% block content %}
+    <div class="skeleton" style="height:70px"></div>
+    <div class="skeleton" style="height:150px"></div>
+    <div class="skeleton" style="height:150px"></div>
+    {% endblock %}
+  </main>
+
+  {% block tabbar %}
+  <nav class="tabbar" aria-label="Asosiy menyu">
+    <a href="/asosiy/" class="{% if active == 'asosiy' %}active{% endif %}"><svg class="ic"><use href="#i-home"/></svg><span>Asosiy</span></a>
+    <a href="/hamyon/" class="{% if active == 'hamyon' %}active{% endif %}"><svg class="ic"><use href="#i-wallet"/></svg><span>Hamyon</span></a>
+    <a href="/qarzlar/" class="{% if active == 'qarzlar' %}active{% endif %}"><svg class="ic"><use href="#i-card"/></svg><span>Qarzlar</span></a>
+    <a href="/saboqlar/" class="{% if active == 'saboqlar' %}active{% endif %}"><svg class="ic"><use href="#i-book"/></svg><span>Saboqlar</span></a>
+  </nav>
+  {% endblock %}
+
+  <div id="sheet-root" class="sheet-root"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <canvas id="confetti" class="confetti"></canvas>
+
+  <script src="{% static 'js/common.js' %}"></script>
+  {% block script %}{% endblock %}
+</body>
+</html>

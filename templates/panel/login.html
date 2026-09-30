@@ -1,0 +1,25 @@
+{% load static %}<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Boshqaruvga kirish — Baraka Daftari</title>
+  <link rel="icon" href="{% static 'img/logo.svg' %}" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/panel.css' %}">
+</head>
+<body class="p-login-body">
+  <form method="post" class="p-login">
+    {% csrf_token %}
+    <img src="{% static 'img/logo.svg' %}" alt="">
+    <h1>Boshqaruv paneli</h1>
+    <p class="p-muted">Faqat loyiha ma'muriyati uchun</p>
+    {% if form.errors %}<p class="p-msg error">Login yoki parol noto'g'ri, yoki sizda ruxsat yo'q.</p>{% endif %}
+    <label>Login<input name="username" autocomplete="username" required autofocus></label>
+    <label>Parol<input name="password" type="password" autocomplete="current-password" required></label>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="p-btn">Kirish</button>
+  </form>
+</body>
+</html>

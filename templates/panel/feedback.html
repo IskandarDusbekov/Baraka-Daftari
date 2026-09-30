@@ -1,0 +1,63 @@
+{% extends "panel/base.html" %}{% load panel_tags %}
+{% block title %}Baholar{% endblock %}
+{% block content %}
+<header class="p-head"><h1>Baholar va fikrlar</h1>
+  <form method="post" action="{% url 'panel:feedback_read' %}">{% csrf_token %}<button class="p-btn ghost sm">Hammasini o'qildi deb belgilash</button></form>
+</header>
+
+<div class="p-grid2">
+  <section class="p-card rating-card">
+    <div class="rating-big"><b>{% if stats.avg %}{{ stats.avg|floatformat:1 }}{% else %}—{% endif %}</b>
+      <span class="stars">{% for i in "12345" %}<i class="{% if stats.avg and forloop.counter <= stats.avg|floatformat:0|add:0 %}on{% endif %}">★</i>{% endfor %}</span>
+      <small class="p-muted">{{ stats.total|default:0|num }} ta baho · {{ asked|num }} kishidan so'ralgan</small></div>
+    <div class="rating-dist">
+      {% for d in dist %}
+      <a href="?rating={{ d.stars }}" class="{% if rating == d.stars|stringformat:'s' %}on{% endif %}"><span>{{ d.stars }} ★</span>
+        <div class="p-progress"><i style="width:{{ d.pct }}%"></i></div><em>{{ d.count|num }}</em></a>
+      {% endfor %}
+    </div>
+  </section>
+  <section class="p-card">
+    <div class="p-card-head"><h2>Qachon so'raladi?</h2></div>
+    <ul class="p-list">
+      <li>Foydalanuvchi ilovaga <b>3-marta</b> qaytib kirganda yoki ro'yxatdan o'tganiga <b>3 kun</b> bo'lganda</li>
+      <li>«Keyinroq» desa — <b>7 kundan</b> keyin qayta, ko'pi bilan <b>3 marta</b></li>
+      <li>Baho qoldirgan odamdan boshqa so'ralmaydi; Sozlamalarda o'zi xohlagan payt baho qoldirishi mumkin</li>
+    </ul>
+  </section>
+</div>
+
+<form class="p-filters" method="get">
+  <select name="rating" onchange="this.form.submit()">
+    <option value="">Barcha baholar</option>
+    {% for s in "54321" %}<option value="{{ s }}" {% if rating == s %}selected{% endif %}>{{ s }} ★</option>{% endfor %}
+  </select>
+  <label class="check-inline"><input type="checkbox" name="with_comment" value="1" {% if with_comment %}checked{% endif %} onchange="this.form.submit()"> Faqat fikr yozilganlar</label>
+</form>
+
+<section class="p-card flush">
+  <table class="p-table rows">
+    <thead><tr><th>Baho</th><th>Fikr</th><th>Foydalanuvchi</th><th>Sahifa</th><th>Sana</th></tr></thead>
+    <tbody>
+    {% for f in page %}
+      <tr class="{% if not f.is_read %}unread{% endif %}">
+        <td class="nowrap"><span class="stars">{% for i in "12345" %}<i class="{% if forloop.counter <= f.rating %}on{% endif %}">★</i>{% endfor %}</span></td>
+        <td>{% if f.comment %}{{ f.comment|linebreaksbr }}{% else %}<span class="p-muted">—</span>{% endif %}</td>
+        <td><a href="{% url 'panel:user' f.user.uid %}">{{ f.user.display_name }}</a></td>
+        <td class="p-muted">{{ f.page|default:"—" }}</td>
+        <td class="p-muted nowrap">{{ f.created_at|date:"d.m.Y H:i" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5" class="p-muted">Hali baho yo'q</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% if page.has_other_pages %}
+<nav class="p-pager">
+  {% if page.has_previous %}<a href="?{{ params }}&page={{ page.previous_page_number }}">← Oldingi</a>{% endif %}
+  <span>{{ page.number }} / {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?{{ params }}&page={{ page.next_page_number }}">Keyingi →</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

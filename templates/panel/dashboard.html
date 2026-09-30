@@ -1,0 +1,70 @@
+{% extends "panel/base.html" %}{% load panel_tags %}
+{% block title %}Umumiy{% endblock %}
+{% block content %}
+<header class="p-head"><h1>Umumiy ko'rinish</h1><span class="p-muted">Har 60 soniyada yangilanadi</span></header>
+
+<section class="p-kpis">
+  <div class="kpi"><span>Jami foydalanuvchi</span><b>{{ counts.total|num }}</b><small>bugun +{{ counts.new_today|num }}</small></div>
+  <div class="kpi"><span>Yangi (7 kun)</span><b>{{ counts.new_7|num }}</b><small>30 kun: {{ counts.new_30|num }}</small></div>
+  <div class="kpi"><span>Faol bugun</span><b>{{ counts.active_today|num }}</b><small>7 kun: {{ counts.active_7|num }} · 30 kun: {{ counts.active_30|num }}</small></div>
+  <div class="kpi"><span>Botni ishlatadi</span><b>{{ counts.bot_started|num }}</b><small>bloklagan: {{ counts.bot_blocked|num }}</small></div>
+  <div class="kpi"><span>Daromadini sozlagan</span><b>{{ counts.income_set|pct:counts.total }}%</b><small>{{ counts.income_set|num }} kishi</small></div>
+  <a class="kpi link" href="{% url 'panel:feedback' %}"><span>O'rtacha baho</span>
+    <b>{% if rating.avg %}{{ rating.avg|floatformat:1 }} ★{% else %}—{% endif %}</b>
+    <small>{{ rating.c|num }} ta baho{% if rating.unread %} · <em class="new">{{ rating.unread }} yangi</em>{% endif %}</small></a>
+</section>
+
+<section class="p-card">
+  <div class="p-card-head"><h2>Oxirgi 30 kun</h2>
+    <span class="legend"><i class="c-reg"></i>Ro'yxatdan o'tganlar <i class="c-act"></i>Kirganlar (unikal)</span></div>
+  <div class="bars">
+    {% for c in chart %}
+    <div class="bar" title="{{ c.day|date:'d.m' }}: {{ c.reg }} yangi, {{ c.active }} kirgan">
+      <i class="c-act" style="height:{{ c.active_h }}%"></i><i class="c-reg" style="height:{{ c.reg_h }}%"></i>
+      {% if forloop.counter0|divisibleby:5 %}<em>{{ c.day|date:"d.m" }}</em>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="p-grid2">
+  <section class="p-card">
+    <div class="p-card-head"><h2>Eng ko'p amallar (7 kun)</h2><a href="{% url 'panel:activity' %}">Barchasi →</a></div>
+    <table class="p-table">
+      {% for a in top_actions %}<tr><td>{{ a.label }}</td><td class="r"><b>{{ a.c|num }}</b></td></tr>
+      {% empty %}<tr><td class="p-muted">Hali amallar yo'q</td></tr>{% endfor %}
+    </table>
+  </section>
+  <section class="p-card">
+    <div class="p-card-head"><h2>Pul oqimi (valyuta bo'yicha alohida)</h2></div>
+    <table class="p-table">
+      <thead><tr><th></th>{% for m in money %}<th class="r">{{ m.label }}</th>{% endfor %}</tr></thead>
+      <tr><td>Foydalanuvchilar</td>{% for m in money %}<td class="r">{{ m.users|num }}</td>{% endfor %}</tr>
+      <tr><td>Bu oy xarajatlar</td>{% for m in money %}<td class="r"><b>{{ m.expenses_month|money:m.code }}</b></td>{% endfor %}</tr>
+      <tr><td>Jami jamg'arma</td>{% for m in money %}<td class="r"><b>{{ m.saved_total|money:m.code }}</b></td>{% endfor %}</tr>
+      <tr><td>Qolgan qarzlar</td>{% for m in money %}<td class="r"><b>{{ m.debts_left|money:m.code }}</b></td>{% endfor %}</tr>
+      <tr><td>Yakunlangan saboqlar</td><td class="r" colspan="{{ money|length }}"><b>{{ lessons_done|num }}</b></td></tr>
+    </table>
+  </section>
+</div>
+
+<div class="p-grid2">
+  <section class="p-card">
+    <div class="p-card-head"><h2>Yangi ro'yxatdan o'tganlar</h2><a href="{% url 'panel:users' %}">Barchasi →</a></div>
+    <table class="p-table">
+      {% for u in latest %}
+      <tr><td><a href="{% url 'panel:user' u.uid %}">{{ u.display_name }}</a>{% if u.username %} <span class="p-muted">@{{ u.username }}</span>{% endif %}</td>
+        <td class="r p-muted">{{ u.created_at|date:"d.m H:i" }}</td></tr>
+      {% empty %}<tr><td class="p-muted">Hali foydalanuvchi yo'q</td></tr>{% endfor %}
+    </table>
+  </section>
+  <section class="p-card">
+    <div class="p-card-head"><h2>Yuborilayotgan xabarlar</h2><a href="{% url 'panel:broadcasts' %}">Xabarlar →</a></div>
+    {% for b in broadcasts %}
+      <p><b>{% if b.lesson %}Saboq e'loni: {{ b.lesson.title }}{% else %}{{ b.text|truncatechars:60 }}{% endif %}</b></p>
+      <div class="p-progress"><i style="width:{{ b.sent|add:b.failed|pct:b.total }}%"></i></div>
+      <p class="p-muted small">{{ b.sent|num }} / {{ b.total|num }} · {{ b.get_status_display }}</p>
+    {% empty %}<p class="p-muted">Navbatda xabar yo'q</p>{% endfor %}
+  </section>
+</div>
+{% endblock %}

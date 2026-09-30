@@ -1,0 +1,36 @@
+{% extends "panel/base.html" %}{% load panel_tags %}
+{% block title %}{% if only_auth %}Kirishlar{% else %}Amallar{% endif %}{% endblock %}
+{% block content %}
+<header class="p-head">
+  <h1>{% if only_auth %}Kirishlar va ro'yxatdan o'tishlar{% else %}Amallar jurnali{% endif %}</h1>
+</header>
+
+<form class="p-filters" method="get">
+  <select name="action" onchange="this.form.submit()">
+    <option value="">{% if only_auth %}Kirish + ro'yxatdan o'tish{% else %}Barcha amallar{% endif %}</option>
+    {% for key, label in actions %}<option value="{{ key }}" {% if action == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+</form>
+
+<section class="p-card flush">
+  <table class="p-table rows">
+    <thead><tr><th>Vaqt</th><th>Foydalanuvchi</th><th>Amal</th><th>Tafsilot</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="nowrap p-muted">{{ r.created_at|date:"d.m.Y H:i:s" }}</td>
+        <td><a href="{% url 'panel:user' r.user.uid %}">{{ r.user.display_name }}</a></td>
+        <td>{% if r.action == 'register' %}<span class="tag green">{{ r.label }}</span>{% elif r.action == 'login' %}<span class="tag blue">{{ r.label }}</span>{% else %}{{ r.label }}{% endif %}</td>
+        <td class="p-muted">{% for k, v in r.meta.items %}{% if k == 'amount' %}{{ v|num }}{% else %}{{ k }}: {{ v }}{% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" class="p-muted">Hali yozuvlar yo'q</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+<nav class="p-pager">
+  {% if request.GET.before %}<a href="?action={{ action }}">← Eng yangilari</a>{% endif %}
+  {% if has_more %}<a href="?action={{ action }}&before={{ next_before }}">Eskiroqlari →</a>{% endif %}
+</nav>
+{% endblock %}

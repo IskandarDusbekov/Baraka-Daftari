@@ -1,0 +1,309 @@
+/* Hamyon: xarajatlar (eng tepada), o'zingga to'la, kirimlar, diagramma, tarix */
+(() => {
+  'use strict';
+  const { api, esc, num, som, compact, ic, toast, haptic, withBusy, bindMoney, render, MONTHS, CATS } = B;
+
+  const SOURCES = { salary: 'Oylik maosh', extra: "Qo'shimcha", business: 'Biznes / savdo', other: 'Boshqa' };
+
+  const params = new URLSearchParams(location.search);
+  let month = /^\d{4}-\d{2}$/.test(params.get('oy') || '') ? params.get('oy') : B.monthKey();
+  if (month > B.monthKey()) month = B.monthKey();
+  let firstRender = true;
+
+  const shiftMonth = (key, delta) => { const [y, m] = key.split('-').map(Number); return B.monthKey(new Date(y, m - 1 + delta, 1)); };
+  const lastDayOf = (key) => { const [y, m] = key.split('-').map(Number); return `${key}-${B.pad(new Date(y, m, 0).getDate())}`; };
+  const dayLabel = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${d}-${MONTHS[m - 1].toLowerCase()}`; };
+
+  function incomeSettings(t) {
+    if (t.income_type === 'salary' && t.monthly_income) {
+      return `<b>Oylik: ${som(t.monthly_income)}</b><span>O'zingizga ${t.save_percent}% — ${som(Math.floor((t.monthly_income * t.save_percent) / 100))} / oy</span>`;
+    }
+    if (t.income_type === 'irregular') {
+      return `<b>Oylik olmayman</b><span>Har bir kirimdan ${t.save_percent}% o'zingizga</span>`;
+    }
+    return '<b>Daromad sozlanmagan</b><span>Oylik bormi yo\'qmi va necha foiz to\'lashingizni tanlang</span>';
+  }
+
+  async function main() {
+    const [w, me] = await Promise.all([api(`wallet?month=${month}`), api('me')]);
+    const t = w.totals;
+    const p = t.save_percent;
+    const isCurrent = month === B.monthKey();
+    const defaultDate = isCurrent ? B.todayISO() : lastDayOf(month);
+    const catTotal = w.categories.reduce((s, c) => s + c.amount, 0);
+    const savePct = t.should_save ? Math.round((t.saved * 100) / t.should_save) : 0;
+
+    const page = render(`
+      <section class="month-switch">
+        <button class="icon-btn" data-month="-1" aria-label="Oldingi oy">${ic('left')}</button>
+        <h2>${B.monthLabel(month)}</h2>
+        <button class="icon-btn" data-month="1" aria-label="Keyingi oy" ${isCurrent ? 'disabled' : ''}>${ic('right')}</button>
+      </section>
+
+      <section class="totals four">
+        <div class="total in"><span>${ic('up')} Daromad</span><b>${compact(t.base_income)}</b></div>
+        <div class="total out"><span>${ic('down')} Xarajat</span><b>${compact(t.expense)}</b></div>
+        <div class="total save"><span>${ic('safe')} Jamg'arma</span><b>${compact(t.saved)}</b></div>
+        <div class="total left ${t.base_income && t.left < 0 ? 'neg' : ''}"><span>${ic('wallet')} Qoldi</span><b>${t.base_income ? compact(t.left) : '—'}</b></div>
+      </section>
+
+      <section class="card" id="xarajat">
+        <div class="card-title"><h3><span class="h-ico orange">${ic('receipt')}</span> Xarajat qo'shish</h3></div>
+        ${B.expenseFormHtml(defaultDate)}
+        <a class="link small mt" href="/sozlamalar/" style="display:inline-flex;gap:4px">${ic('repeat')} Ijara, kommunal kabi har oylik to'lovlarni avtomatik yozish</a>
+      </section>
+
+      ${t.should_save ? `
+      <section class="card">
+        <div class="card-title"><h3><span class="h-ico green">${ic('safe')}</span> O'zingga to'la (${p}%)</h3><span class="chip">${Math.min(savePct, 999)}%</span></div>
+        <div class="progress"><i data-w="${savePct}"></i></div>
+        <p class="muted small mt">Bu oy: <b>${som(t.saved)}</b> / ${som(t.should_save)} zaxiraga o'tkazildi${t.income_is_planned ? ' (oylik bo\'yicha)' : ''}</p>
+        ${t.saved < t.should_save
+          ? `<button class="btn sm mt" id="save-rest">Qolgan ${som(t.should_save - t.saved)} ni o'tkazish</button>`
+          : `<p class="chip mt">${ic('check')} Bu oy o'zingizga to'ladingiz!</p>`}
+      </section>` : ''}
+
+      <section class="card income-row">
+        <span class="h-ico green">${ic('wallet')}</span>
+        <div class="ir-main">${incomeSettings(t)}</div>
+        <button class="btn sm ${t.income_type ? 'ghost' : ''}" id="setup-btn">${t.income_type ? ic('edit') : 'Sozlash'}</button>
+      </section>
+
+      <section class="card" id="kirim">
+        <div class="card-title"><h3><span class="h-ico blue">${ic('up')}</span> Kirim yozish</h3><span class="chip blue">${p}% kalkulyator</span></div>
+        <p class="muted small" style="margin:-4px 0 10px">Maosh yoki boshqa pul tushganda yozing${t.income_type === 'salary' ? ' (ixtiyoriy — oylik summangiz allaqachon hisobda)' : ''}.</p>
+        <label class="field money"><input class="input" id="inc-amt" inputmode="numeric" placeholder="${B.ph('big')}" autocomplete="off"></label>
+        <div class="calc-result" id="inc-calc" hidden>
+          <div><span>O'zingizga (${p}%)</span><b id="inc-self">0</b></div>
+          <div class="rest"><span>Qolgani</span><b id="inc-rest">0</b></div>
+        </div>
+        <div class="form-grid mt">
+          <label class="field"><span>Manba</span>
+            <select class="input" id="inc-src">${Object.entries(SOURCES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
+          <label class="field"><span>Sana</span><input class="input" type="date" id="inc-date" value="${defaultDate}" max="${B.todayISO()}"></label>
+        </div>
+        <button class="btn big" id="inc-go">${ic('plus')} Kirimni saqlash</button>
+      </section>
+
+      <section class="card">
+        <div class="card-title"><h3><span class="h-ico purple">${ic('pie')}</span> Pul qayerga ketmoqda?</h3></div>
+        ${catTotal ? `<div class="chart-wrap">${donut(w.categories, catTotal)}
+          <div class="legend">${w.categories.filter((c) => c.amount).sort((a, b) => b.amount - a.amount).map((c) => `
+            <div class="legend-item"><span class="dot" style="background:${CATS[c.key].color}"></span>
+              <span class="lname"><span>${esc(c.label)}</span><small class="muted">${som(c.amount)}</small></span>
+              <b>${Math.round((c.amount * 100) / catTotal)}%</b></div>`).join('')}
+          </div></div>`
+        : `<div class="empty"><span class="e-ico">${ic('pie')}</span>Bu oy xarajat kiritilmagan</div>`}
+      </section>
+
+      ${needsCard(w.needs)}
+
+      <section class="card" id="tarix">
+        <div class="card-title"><h3><span class="h-ico gray">${ic('history')}</span> Tarix</h3><span class="muted small" id="h-count">${w.history.count} ta yozuv</span></div>
+        <div class="filters">
+          ${[['', 'Hammasi'], ['expense', 'Xarajat'], ['income', 'Kirim'], ['saving', "Jamg'arma"]].map(([k, l]) => `<button type="button" class="filter ${k === '' ? 'active' : ''}" data-filter="${k}">${l}</button>`).join('')}
+        </div>
+        <ul class="entries" id="h-list"></ul>
+        <div class="empty" id="h-empty" hidden><span class="e-ico">${ic('file')}</span>Hali yozuv yo'q</div>
+        <button class="btn ghost block mt" id="h-more" hidden>Ko'proq ko'rsatish</button>
+      </section>`);
+
+    setupHistory(page, w.history);
+
+    page.querySelectorAll('[data-month]').forEach((b) => {
+      b.onclick = () => {
+        const next = shiftMonth(month, Number(b.dataset.month));
+        if (next > B.monthKey()) return;
+        month = next;
+        history.replaceState(null, '', next === B.monthKey() ? location.pathname : `?oy=${next}`);
+        main().catch((e) => B.errorView(e, main));
+      };
+    });
+
+    B.bindExpenseForm(page.querySelector('#xarajat'), main);
+    page.querySelector('#setup-btn').onclick = () => B.incomeSetupSheet(me.user, main);
+    const saveRest = page.querySelector('#save-rest');
+    if (saveRest) saveRest.onclick = () => B.saveSheet(t.should_save - t.saved, null, 0, main);
+
+    // Kirim + jonli kalkulyator (foydalanuvchi tanlagan foiz bo'yicha)
+    const incVal = bindMoney(page.querySelector('#inc-amt'), (v) => {
+      const self = Math.floor((v * p) / 100);
+      page.querySelector('#inc-calc').hidden = !v;
+      page.querySelector('#inc-self').textContent = som(self);
+      page.querySelector('#inc-rest').textContent = som(v - self);
+    });
+    page.querySelector('#inc-go').onclick = (ev) => withBusy(ev.currentTarget, async () => {
+      const amount = incVal();
+      if (!amount) { toast('Kirim summasini kiriting', true); return; }
+      try {
+        const r = await api('incomes', { method: 'POST', body: {
+          amount, source: page.querySelector('#inc-src').value, date: page.querySelector('#inc-date').value,
+        } });
+        haptic('success');
+        B.saveSheet(r.suggested_saving, r.income.id, amount, main);
+      } catch (e) { toast(e.message, true); }
+    });
+
+    // Bosh sahifadagi "+ Kirim" tugmasidan kelinganda kerakli joyga o'tish
+    if (firstRender && location.hash) {
+      const target = page.querySelector(location.hash);
+      if (target) setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    }
+    firstRender = false;
+  }
+
+  /** Tarix: 20 tadan sahifalab ("Ko'proq ko'rsatish") va turi bo'yicha filtr */
+  function setupHistory(page, first) {
+    const list = page.querySelector('#h-list');
+    const more = page.querySelector('#h-more');
+    let filter = '';
+    let shown = 0;
+
+    const byKey = {};
+    const bindDel = () => {
+      list.querySelectorAll('[data-del]').forEach((b) => {
+        b.onclick = async (ev) => {
+          ev.stopPropagation();
+          if (!(await B.confirmAsk("Bu yozuv tarixdan o'chiriladi va hisob-kitob qayta hisoblanadi.", { title: "Yozuvni o'chirasizmi?", ok: "O'chirish", danger: true }))) return;
+          try {
+            await api(`entries/${b.dataset.del}`, { method: 'DELETE' });
+            toast("O'chirildi");
+            await main();
+          } catch (e) { toast(e.message, true); }
+        };
+      });
+      list.querySelectorAll('[data-edit]').forEach((row) => {
+        row.onclick = () => editSheet(byKey[row.dataset.edit]);
+      });
+    };
+
+    const show = (chunk, reset) => {
+      if (reset) { list.innerHTML = ''; shown = 0; }
+      chunk.entries.forEach((e) => { byKey[`${e.type}/${e.id}`] = e; });
+      list.insertAdjacentHTML('beforeend', chunk.entries.map(entryRow).join(''));
+      shown += chunk.entries.length;
+      more.hidden = !chunk.has_more;
+      page.querySelector('#h-empty').hidden = chunk.count > 0;
+      page.querySelector('#h-count').textContent = `${chunk.count} ta yozuv`;
+      bindDel();
+    };
+    const load = (offset) => api(`entries?month=${month}&type=${filter}&offset=${offset}`);
+
+    show(first, true);
+    more.onclick = (ev) => withBusy(ev.currentTarget, async () => show(await load(shown), false));
+    page.querySelectorAll('[data-filter]').forEach((b) => {
+      b.onclick = async () => {
+        filter = b.dataset.filter;
+        page.querySelectorAll('[data-filter]').forEach((x) => x.classList.toggle('active', x === b));
+        try { show(await load(0), true); } catch (e) { toast(e.message, true); }
+      };
+    });
+  }
+
+  /** Kirim yoki xarajatni tahrirlash */
+  function editSheet(e) {
+    if (!e) return;
+    const isExp = e.type === 'expense';
+    let cat = e.category;
+    let need = e.need || '';
+    const body = B.openSheet(`
+      <h2>${ic('edit')} ${isExp ? 'Xarajatni tahrirlash' : 'Kirimni tahrirlash'}</h2>
+      ${isExp ? `<div class="cats">${Object.entries(CATS).map(([k, c]) => `<button type="button" class="cat ${k === cat ? 'active' : ''}" data-cat="${k}" style="--c:${c.color}">${ic(c.icon, 'ci')}${c.label}</button>`).join('')}</div>` : ''}
+      <label class="field money"><input class="input" id="ed-amt" inputmode="numeric" value="${e.amount}"></label>
+      ${isExp ? `<div class="needs">${Object.entries(B.NEEDS).map(([k, n]) => `<button type="button" class="need need-${k} ${k === need ? 'active' : ''}" data-need="${k}"><b>${n.label}</b><small>${n.hint}</small></button>`).join('')}</div>`
+        : `<label class="field"><span>Manba</span><select class="input" id="ed-src">${Object.entries(SOURCES).map(([k, v]) => `<option value="${k}" ${k === e.source ? 'selected' : ''}>${v}</option>`).join('')}</select></label>`}
+      <div class="form-grid">
+        <label class="field"><span>Izoh</span><input class="input" id="ed-note" maxlength="200" value="${esc(e.note)}"></label>
+        <label class="field"><span>Sana</span><input class="input" type="date" id="ed-date" value="${e.date}" max="${B.todayISO()}"></label>
+      </div>
+      <button class="btn ${isExp ? 'orange' : ''} big" id="ed-save">${ic('check')} Saqlash</button>
+      <button class="btn danger block" id="ed-del">${ic('trash')} O'chirish</button>`);
+    const $ = (s) => body.querySelector(s);
+    const val = bindMoney($('#ed-amt'));
+    body.querySelectorAll('[data-cat]').forEach((b) => {
+      b.onclick = () => { cat = b.dataset.cat; body.querySelectorAll('[data-cat]').forEach((x) => x.classList.toggle('active', x === b)); };
+    });
+    body.querySelectorAll('[data-need]').forEach((b) => {
+      b.onclick = () => {
+        need = need === b.dataset.need ? '' : b.dataset.need;
+        body.querySelectorAll('[data-need]').forEach((x) => x.classList.toggle('active', x.dataset.need === need));
+      };
+    });
+    $('#ed-save').onclick = (ev) => withBusy(ev.currentTarget, async () => {
+      if (!val()) { toast('Summani kiriting', true); return; }
+      const payload = { amount: val(), note: $('#ed-note').value, date: $('#ed-date').value };
+      if (isExp) Object.assign(payload, { category: cat, need }); else payload.source = $('#ed-src').value;
+      try {
+        await api(`entries/${e.type}/${e.id}`, { method: 'POST', body: payload });
+        B.closeSheet(true); haptic('success'); toast('Saqlandi'); await main();
+      } catch (err) { toast(err.message, true); }
+    });
+    $('#ed-del').onclick = async () => {
+      if (!(await B.confirmAsk("Bu yozuv tarixdan o'chiriladi va hisob-kitob qayta hisoblanadi.", { title: "Yozuvni o'chirasizmi?", ok: "O'chirish", danger: true }))) return;
+      try { await api(`entries/${e.type}/${e.id}`, { method: 'DELETE' }); B.closeSheet(true); toast("O'chirildi"); await main(); } catch (err) { toast(err.message, true); }
+    };
+  }
+
+  /** 2-saboq: xarajatlar Zarur / Kerak / Havas bo'yicha */
+  function needsCard(n) {
+    const marked = n.zarur + n.kerak + n.havas;
+    if (!marked) {
+      return `<section class="card">
+        <div class="card-title"><h3><span class="h-ico orange">${ic('target')}</span> Zarur · Kerak · Havas</h3></div>
+        <p class="muted small">Xarajat yozayotganda uni <b>Zarur</b>, <b>Kerak</b> yoki <b>Havas</b> deb belgilang —
+          bir haftada "xurjun teshigi"dan qancha pul chiqib ketayotganini ko'rasiz.</p>
+      </section>`;
+    }
+    const pct = (v) => Math.round((v * 100) / marked);
+    return `<section class="card">
+      <div class="card-title"><h3><span class="h-ico orange">${ic('target')}</span> Zarur · Kerak · Havas</h3></div>
+      <div class="need-bar">${Object.entries(B.NEEDS).map(([k, x]) => (n[k] ? `<i style="width:${pct(n[k])}%;background:${x.color}"></i>` : '')).join('')}</div>
+      <div class="rule-lines">${Object.entries(B.NEEDS).map(([k, x]) => `
+        <div><span class="dot" style="background:${x.color}"></span>${x.label} <span class="muted small">(${x.hint})</span><b>${som(n[k])} · ${pct(n[k])}%</b></div>`).join('')}
+      </div>
+      ${n.havas ? `<p class="tip">${ic('bulb')} Bu oy havasga <b>${som(n.havas)}</b> ketdi. Havasga chek qo'ying, lekin uni o'ldirmang.</p>` : ''}
+      ${n.unmarked ? `<p class="muted small mt">Belgilanmagan xarajatlar: ${som(n.unmarked)}</p>` : ''}
+    </section>`;
+  }
+
+  function entryRow(e) {
+    let icon; let cls; let sign; let title; let color;
+    if (e.type === 'income') { icon = 'up'; cls = 'plus'; sign = '+'; title = SOURCES[e.source] || e.label; color = '#2563eb'; }
+    else if (e.type === 'saving') {
+      const b = B.BUCKETS[e.bucket] || B.BUCKETS.guard;
+      const out = e.amount < 0;
+      icon = b.icon; cls = out ? 'plus' : 'save'; sign = out ? '←' : '→'; color = b.color;
+      title = out ? `${b.label}dan olindi` : `${b.label}ga`;
+    }
+    else { const c = CATS[e.category] || CATS.other; icon = c.icon; cls = 'minus'; sign = '−'; title = c.label; color = c.color; }
+    const editable = e.type !== 'saving';
+    return `<li class="entry ${editable ? 'editable' : ''}" ${editable ? `data-edit="${e.type}/${e.id}"` : ''}>
+      <span class="e-icon" style="--c:${color}">${ic(icon)}</span>
+      <span class="e-main"><b>${esc(title)}${e.need ? `<span class="need-tag" style="background:${B.NEEDS[e.need].color}">${B.NEEDS[e.need].label}</span>` : ''}</b><small>${dayLabel(e.date)}${e.note ? ` · ${esc(e.note)}` : ''}</small></span>
+      <span class="e-amt ${cls}">${sign}${num(Math.abs(e.amount))}</span>
+      <button class="e-del" data-del="${e.type}/${e.id}" aria-label="O'chirish">${ic('trash')}</button>
+    </li>`;
+  }
+
+  function donut(cats, total) {
+    const R = 60; const C = 2 * Math.PI * R;
+    const active = cats.filter((c) => c.amount > 0);
+    const gap = active.length > 1 ? 2 : 0;
+    let offset = 0;
+    const segs = active.map((c) => {
+      const len = (c.amount / total) * C;
+      const s = `<circle r="${R}" cx="80" cy="80" fill="none" stroke="${CATS[c.key].color}" stroke-width="24"
+        stroke-dasharray="${Math.max(len - gap, 0.1)} ${C}" stroke-dashoffset="${-offset}"><title>${esc(c.label)}: ${som(c.amount)}</title></circle>`;
+      offset += len;
+      return s;
+    }).join('');
+    return `<svg class="donut" viewBox="0 0 160 160" role="img" aria-label="Xarajatlar diagrammasi">
+      <circle r="${R}" cx="80" cy="80" fill="none" stroke="#f1f5f9" stroke-width="24"/>
+      <g transform="rotate(-90 80 80)">${segs}</g>
+      <text x="80" y="76" text-anchor="middle" font-size="12" fill="#64748b" font-weight="800">Jami</text>
+      <text x="80" y="96" text-anchor="middle" font-size="17" fill="#1e293b" font-weight="900">${compact(total)}</text>
+    </svg>`;
+  }
+
+  B.ready(main);
+})();

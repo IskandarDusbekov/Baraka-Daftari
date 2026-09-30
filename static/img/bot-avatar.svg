@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Telegram bot rasmi: fon to'liq (Telegram doira qilib qirqadi), belgi markazda -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="coin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fcd34d"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="440" cy="60" r="170" fill="#fff" opacity=".08"/>
+  <g transform="translate(256 256) scale(.78) translate(-256 -256)">
+    <rect x="120" y="96" width="272" height="320" rx="40" fill="#0b5e4a" opacity=".35" transform="translate(10 14)"/>
+    <rect x="120" y="96" width="272" height="320" rx="40" fill="#fff"/>
+    <path d="M160 96h32v320h-32a40 40 0 0 1-40-40V136a40 40 0 0 1 40-40z" fill="#dcfce7"/>
+    <path d="M192 128v256" stroke="#86efac" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 22"/>
+    <path d="M292 318V236" stroke="#15803d" stroke-width="16" stroke-linecap="round"/>
+    <path d="M292 276c-42 0-72-26-78-72 46 0 74 24 78 72z" fill="#22c55e"/>
+    <path d="M292 244c6-54 42-84 88-84-2 54-38 84-88 84z" fill="#16a34a"/>
+    <circle cx="292" cy="352" r="42" fill="url(#coin)"/>
+    <circle cx="292" cy="352" r="28" fill="none" stroke="#fff" stroke-width="6" opacity=".75"/>
+  </g>
+</svg>

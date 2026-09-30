@@ -1,0 +1,34 @@
+{% extends "panel/base.html" %}
+{% block title %}{{ lesson.number }}-saboq — ko'rinish{% endblock %}
+{% block content %}
+<header class="p-head">
+  <div><a class="p-back" href="{% url 'panel:lessons' %}">← Saboqlar</a>
+    <h1>Foydalanuvchi ko'rinishi</h1>
+    <p class="p-muted">{% if lesson.is_published %}<span class="tag green">nashr qilingan</span>{% else %}<span class="tag">yashirin — foydalanuvchilar ko'rmaydi</span>{% endif %}</p></div>
+  <a class="p-btn" href="{% url 'panel:lesson_edit' lesson.pk %}">Tahrirlash</a>
+</header>
+
+<div class="phone">
+  <div class="phone-screen">
+    {% if lesson.youtube_id %}
+    <div class="phone-video"><iframe src="https://www.youtube-nocookie.com/embed/{{ lesson.youtube_id }}?rel=0" title="{{ lesson.title }}"
+         allow="encrypted-media; picture-in-picture; fullscreen" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+    {% else %}<div class="phone-video empty">Video qo'shilmagan</div>{% endif %}
+    <p class="p-muted small">{{ lesson.number }}-saboq{% if lesson.published_on %} · {{ lesson.published_on|date:"d.m.Y" }}{% endif %}</p>
+    <h2>{{ lesson.title }}</h2>
+    <h3>Qisqacha mazmun</h3>
+    <p class="pre">{{ lesson.summary }}</p>
+    {% if lesson.key_points_list %}<h3>Saboqlar</h3>
+    <ol>{% for p in lesson.key_points_list %}<li>{{ p }}</li>{% endfor %}</ol>{% endif %}
+    <h3>Nima qilish kerak</h3>
+    <ul class="tasks">{% for t in lesson.tasks_list %}<li>{{ t }}</li>{% empty %}<li class="p-muted">Vazifa yozilmagan</li>{% endfor %}</ul>
+    <div class="phone-task"><b>Yakunlash sharti:</b> {{ lesson.get_task_type_display }}
+      {% if lesson.task_type == 'note' %}<br><i>Savol: {{ lesson.note_prompt }}</i>{% endif %}</div>
+  </div>
+  <aside class="phone-side">
+    <h3>Bot xabari</h3>
+    <div class="tg-bubble">📚 Sizni Baraka Daftarining <b>{{ lesson.number }}-saboqi</b> kutmoqda.<br><br>
+      <b>{{ lesson.title }}</b><br>📌 Vazifa: {{ lesson.task_title }}<br><br>Videoni ko'rish va vazifani bajarish uchun pastdagi tugmani bosing.</div>
+  </aside>
+</div>
+{% endblock %}

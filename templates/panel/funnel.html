@@ -1,0 +1,30 @@
+{% extends "panel/base.html" %}{% load panel_tags %}
+{% block title %}Voronka{% endblock %}
+{% block content %}
+<header class="p-head"><h1>Voronka</h1>
+  <div class="p-tabs">
+    <a href="?period=7" class="{% if period == '7' %}on{% endif %}">7 kun</a>
+    <a href="?period=30" class="{% if period == '30' %}on{% endif %}">30 kun</a>
+    <a href="?period=90" class="{% if period == '90' %}on{% endif %}">90 kun</a>
+    <a href="?period=all" class="{% if period == 'all' %}on{% endif %}">Hammasi</a>
+  </div>
+</header>
+<p class="p-muted">Tanlangan davrda ro'yxatdan o'tganlar qaysi bosqichgacha yetib borgani. Har bir bosqich oldingilarini ham o'tganlarni sanaydi.</p>
+
+<section class="p-card funnel">
+  {% for r in rows %}
+  <div class="f-row">
+    <div class="f-label"><b>{{ forloop.counter }}. {{ r.label }}</b>
+      {% if not forloop.first %}<span class="p-muted">oldingisidan {{ r.of_prev }}%</span>{% endif %}</div>
+    <div class="f-bar"><i style="width:{{ r.of_first }}%"></i><span>{{ r.count|num }} · {{ r.of_first }}%</span></div>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="p-kpis">
+  <div class="kpi"><span>Qarz kiritganlar</span><b>{{ extra.debts|num }}</b></div>
+  <div class="kpi"><span>Bank krediti bilan</span><b>{{ extra.credit|num }}</b></div>
+  <div class="kpi"><span>Majburiy xarajat belgilagan</span><b>{{ extra.recurring|num }}</b></div>
+  <div class="kpi"><span>Botni ishga tushirgan</span><b>{{ extra.bot|num }}</b></div>
+</section>
+{% endblock %}
