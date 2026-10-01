@@ -24,6 +24,7 @@ urlpatterns = [
     path("baholar/", views.feedback_list, name="feedback"),
     path("baholar/oqildi/", views.feedback_read, name="feedback_read"),
     path("seo/", views.seo_settings, name="seo"),
+    path("sozlamalar/", views.site_settings, name="settings"),
     path("seo/fayl/<int:pk>/ochirish/", views.seo_file_delete, name="seo_file_delete"),
     path("xabarlar/", views.broadcasts, name="broadcasts"),
 ]

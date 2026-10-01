@@ -6,8 +6,7 @@ from .telegram import app_button, webapp_url
 
 DISCLAIMER = (
     "ℹ️ <b>USHBU LOYIHA ABDUKARIM MIRZAYEVNING «BARAKA DAFTARI» KO'RSATUVIDAN "
-    "ILHOMLANGAN HOLDA, INSONLARGA QULAYLIK YARATISH MAQSADIDA ISHLAB CHIQILDI. "
-    "BARCHA HUQUQLAR VA ASL G'OYA MUALLIFI ABDUKARIM MIRZAYEVGA TEGISHLI.</b>"
+    "ILHOMLANGAN HOLDA, INSONLARGA QULAYLIK YARATISH MAQSADIDA ISHLAB CHIQILDI.</b>"
 )
 
 
@@ -93,18 +92,10 @@ def about_text():
 
 
 def lesson_message(user, morning=False):
-    """Navbatdagi saboq haqida xabar. Ochiq saboq bo'lmasa (hammasi bajarilgan / ertaga) None."""
-    lesson, state = services.current_lesson(user)
+    """Navbatdagi ochiq saboq haqida xabar. Hammasi bajarilgan bo'lsa None."""
+    lesson, _ = services.current_lesson(user)
     if lesson is None:
         return None
-    if state == "wait":
-        if morning:
-            return None
-        text = (
-            "✅ Bugungi saboq bajarildi. Barakalla!\n\n"
-            f"Keyingisi — <b>{lesson.number}-saboq: {escape(lesson.title)}</b> ertaga ochiladi."
-        )
-        return text, _rows([app_button("📝 Daftarni ochish")])
     greet = "Assalomu alaykum! ☀️\n\n" if morning else ""
     total = len(services.published_lessons())
     text = (

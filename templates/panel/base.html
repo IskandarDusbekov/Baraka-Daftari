@@ -25,6 +25,7 @@
       <a href="{% url 'panel:broadcasts' %}" class="{% if nav == 'broadcasts' %}on{% endif %}"><svg class="ic"><use href="#i-send"/></svg>Xabarlar</a>
       <a href="{% url 'panel:feedback' %}" class="{% if nav == 'feedback' %}on{% endif %}"><svg class="ic"><use href="#i-star"/></svg>Baholar</a>
       <a href="{% url 'panel:seo' %}" class="{% if nav == 'seo' %}on{% endif %}"><svg class="ic"><use href="#i-search"/></svg>SEO</a>
+      <a href="{% url 'panel:settings' %}" class="{% if nav == 'settings' %}on{% endif %}"><svg class="ic"><use href="#i-gear"/></svg>Sozlamalar</a>
       {% if request.user.is_superuser %}<a href="{% url 'admin:index' %}" class="muted-link"><svg class="ic"><use href="#i-file"/></svg>Ma'lumotlar bazasi</a>{% endif %}
     </nav>
     <div class="p-me">

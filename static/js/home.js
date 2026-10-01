@@ -56,9 +56,9 @@
       </section>`;
     } else {
       task = `<section class="card lesson-mini">
-        <span class="h-ico green">${ic(cur ? 'check-circle' : 'trophy')}</span>
-        <div><b>${cur ? 'Bugungi saboq bajarildi!' : `Barcha ${L.total} ta saboq o'tildi!`}</b>
-          <p class="muted small">${cur ? `Keyingisi — «${esc(cur.title)}» ertaga ochiladi.` : 'Yangi video chiqishi bilan keyingi saboq qo\'shiladi.'}</p></div>
+        <span class="h-ico green">${ic('trophy')}</span>
+        <div><b>Barcha ${L.total} ta saboq o'tildi!</b>
+          <p class="muted small">Yangi video chiqishi bilan keyingi saboq qo'shiladi.</p></div>
         <a class="icon-btn" href="/saboqlar/" aria-label="Saboqlar">${ic('right')}</a>
       </section>`;
     }
@@ -119,7 +119,7 @@
 
       <a href="/kalkulyator/" class="card tool-link">
         <span class="h-ico blue">${ic('calc')}</span>
-        <span class="t-main"><b>Kalkulyatorlar</b><small>Kredit, nasiya, qarzdan chiqish, jamg'arma maqsadi</small></span>
+        <span class="t-main"><b>Kalkulyatorlar</b><small>Kredit, qarzdan chiqish, narxlar va pul qadri</small></span>
         ${ic('right')}
       </a>
 

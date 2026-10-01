@@ -25,10 +25,10 @@ from django.views.decorators.http import require_POST
 from core import activity, seo, services
 from core.models import (
     ActivityLog, Broadcast, Debt, Expense, Feedback, Lesson, LessonProgress, RecurringExpense, Saving,
-    SeoSettings, TgUser, VerificationFile, total_of,
+    SeoSettings, SiteSettings, TgUser, VerificationFile, total_of,
 )
 
-from .forms import BroadcastForm, LessonForm, MessageForm, SeoForm, VerificationUploadForm
+from .forms import BroadcastForm, LessonForm, MessageForm, SeoForm, SiteSettingsForm, VerificationUploadForm
 
 LOGIN_URL = "/boshqaruv/kirish/"
 security_log = logging.getLogger("security")
@@ -550,6 +550,18 @@ def _seo_checks(s, data):
          "Search Console → «HTML fayl» usuli → faylni pastda yuklang"),
         ("Qidiruv tizimlariga ochiq", s.allow_indexing, "Hozir sayt indekslanmaydi (robots: Disallow /)"),
     ]
+
+
+@staff
+def site_settings(request):
+    """Muallif sahifalari va «Biz bilan bog'lanish» — «Loyiha haqida» sahifasida ko'rinadi."""
+    form = SiteSettingsForm(request.POST or None, instance=SiteSettings.load())
+    if request.method == "POST" and form.is_valid():
+        form.save()
+        audit(request, "site_settings_save")
+        messages.success(request, "Sozlamalar saqlandi — «Loyiha haqida» sahifasida darhol ko'rinadi")
+        return redirect("panel:settings")
+    return render(request, "panel/settings.html", {"nav": "settings", "form": form})
 
 
 @staff

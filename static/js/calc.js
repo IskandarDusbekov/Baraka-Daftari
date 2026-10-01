@@ -1,23 +1,21 @@
-/* Kalkulyatorlar: kredit, nasiya, qarzdan chiqish, jamg'arma maqsadi, valyuta.
+/* Kalkulyatorlar: kredit, qarzdan chiqish va narxlar (pul qadrsizlanishi).
    Barcha hisob brauzerning o'zida — tez ishlaydi va kirmagan mehmonlarga ham ochiq.
    Kredit formulasi credit.js (serverdagi core/services.py bilan bir xil) dan olinadi. */
 (() => {
   'use strict';
-  const { num, ic, haptic, bindMoney, render, digits, MONTHS } = B;
+  const { num, ic, esc, haptic, bindMoney, render, digits, MONTHS } = B;
 
   const TABS = [
     ['kredit', 'bank', 'Kredit'],
-    ['nasiya', 'cart', 'Nasiya'],
     ['qarz', 'card', 'Qarzdan chiqish'],
-    ['jamgarma', 'safe', "Jamg'arma"],
-    ['valyuta', 'swap', 'Valyuta'],
+    ['narx', 'up', 'Narxlar va pul qadri'],
   ];
   const SIGN = { UZS: "so'm", USD: '$' };
-  const PH = { UZS: { big: '50 000 000', mid: '2 000 000' }, USD: { big: '5 000', mid: '300' } };
+  const PH = { UZS: { big: '50 000 000', mid: '2 000 000', small: '80 000' }, USD: { big: '5 000', mid: '300', small: '7' } };
+  const THIS_YEAR = new Date().getFullYear();
 
   let cur = B.currency || 'UZS';
   let tab = 'kredit';
-  let rate = null;
   const state = {}; // har bir kalkulyatorning kiritilgan qiymatlari (tablar almashganda yo'qolmasin)
 
   // ------------------------------------------------------------ yordamchilar
@@ -26,6 +24,7 @@
     const s = n < 0 ? '−' : '';
     return cur === 'USD' ? `${s}$${v}` : `${s}${v} so'm`;
   };
+  const amountOf = (input) => Number(digits(input.value)) || 0;
   const pctOf = (input) => {
     const v = parseFloat(String(input.value).replace(',', '.'));
     return Number.isFinite(v) ? Math.min(Math.max(v, 0), 300) : 0;
@@ -43,19 +42,28 @@
     return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
   };
   const mrate = (annual) => annual / 100 / 12;
+  const dec = (n) => (Math.round(n * 10) / 10).toString().replace('.', ',');
 
+  // Maydon turlari (data-t): money — summa (1 000 000 ko'rinishida), pct — foiz, months — oy, year — yil, text — matn
   const moneyField = (key, label, size = 'big', hint = '') => `
     <label class="field"><span>${label}</span>
-      <div class="money"><input class="input" data-k="${key}" inputmode="numeric" autocomplete="off" placeholder="${PH[cur][size]}"></div>
+      <div class="money"><input class="input" data-k="${key}" data-t="money" inputmode="numeric" autocomplete="off" placeholder="${PH[cur][size]}"></div>
       ${hint ? `<small class="muted small">${hint}</small>` : ''}</label>`;
   const pctField = (key, label, ph = '24') => `
     <label class="field"><span>${label}</span>
-      <div class="money pct-input"><input class="input" data-k="${key}" inputmode="decimal" autocomplete="off" placeholder="${ph}" maxlength="6"></div></label>`;
-  const monthsField = (key, label, chips = []) => `
+      <div class="money pct-input"><input class="input" data-k="${key}" data-t="pct" inputmode="decimal" autocomplete="off" placeholder="${ph}" maxlength="6"></div></label>`;
+  const monthsField = (key, label) => `
     <label class="field"><span>${label}</span>
-      <div class="money months-input"><input class="input" data-k="${key}" inputmode="numeric" autocomplete="off" placeholder="36" maxlength="3"></div></label>
-    ${chips.length ? `<div class="quick">${chips.map((c) => `<button type="button" data-fill="${key}" data-v="${c}">${duration(c)}</button>`).join('')}</div>` : ''}`;
+      <div class="money months-input"><input class="input" data-k="${key}" data-t="months" inputmode="numeric" autocomplete="off" placeholder="36" maxlength="3"></div></label>`;
+  const chips = (key, values, label) => `<div class="quick">${values.map((v) => `<button type="button" data-fill="${key}" data-v="${v}">${label(v)}</button>`).join('')}</div>`;
   const seg = (key, options) => `<div class="seg" data-seg="${key}">${options.map(([v, l]) => `<button type="button" data-v="${v}">${l}</button>`).join('')}</div>`;
+
+  const CLEAN = {
+    pct: (v) => v.replace(/[^\d.,]/g, '').slice(0, 6),
+    months: (v) => digits(v).slice(0, 3),
+    year: (v) => digits(v).slice(0, 4),
+    text: (v) => v.slice(0, 40),
+  };
 
   /** Kalkulyator formasini ulaydi: qiymatlar state'da saqlanadi, har o'zgarishda compute() */
   function wire(box, name, defaults, compute) {
@@ -64,22 +72,25 @@
     let ready = false; // bindMoney darhol onChange chaqiradi — hamma maydon ulanmaguncha hisoblamaymiz
     box.querySelectorAll('[data-k]').forEach((input) => {
       const k = input.dataset.k;
+      const type = input.dataset.t;
       inputs[k] = input;
       if (s[k] !== undefined && s[k] !== '') input.value = s[k];
-      const isMoney = input.closest('.money') && !input.closest('.pct-input') && !input.closest('.months-input');
       const save = () => { s[k] = input.value; if (ready) compute(s, inputs); };
-      if (isMoney) bindMoney(input, save);
-      else input.addEventListener('input', () => {
-        if (input.closest('.months-input')) input.value = digits(input.value).slice(0, 3);
-        else input.value = input.value.replace(/[^\d.,]/g, '').slice(0, 6);
-        save();
-      });
+      if (type === 'money') {
+        bindMoney(input, save);
+      } else {
+        input.addEventListener('input', () => {
+          const clean = CLEAN[type](input.value);
+          if (clean !== input.value) input.value = clean;
+          save();
+        });
+      }
     });
     box.querySelectorAll('[data-seg]').forEach((el) => {
       const k = el.dataset.seg;
       const paint = () => el.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.v === s[k]));
       el.querySelectorAll('button').forEach((b) => {
-        b.onclick = () => { s[k] = b.dataset.v; paint(); haptic('light'); name === 'valyuta' ? compute(s, inputs) : renderTab(); };
+        b.onclick = () => { s[k] = b.dataset.v; paint(); haptic('light'); renderTab(); };
       });
       paint();
     });
@@ -93,13 +104,14 @@
     });
     ready = true;
     compute(s, inputs);
-    return s;
   }
 
   const out = (box, html) => { box.querySelector('.calc-out').innerHTML = html; B.animateBars(box); };
   const emptyOut = (text) => `<p class="calc-empty">${ic('bulb')} ${text}</p>`;
 
   // ------------------------------------------------------------ 1. Kredit
+  const TYPE_NAME = { ann: "har oy bir xil to'lov", diff: "kamayib boradigan to'lov" };
+
   function schedule(P, annual, n, type) {
     const r = mrate(annual);
     const rows = [];
@@ -118,31 +130,35 @@
 
   function kredit(box) {
     box.innerHTML = `
-      ${seg('type', [['ann', 'Annuitet (teng to\'lov)'], ['diff', 'Differensial']])}
+      ${seg('type', [['ann', "Har oy bir xil to'lov"], ['diff', "Kamayib boradigan to'lov"]])}
+      <p class="muted small" id="type-hint"></p>
       ${moneyField('P', 'Kredit summasi')}
       <div class="form-grid">${pctField('a', 'Yillik foiz')}${monthsField('n', 'Muddat')}</div>
-      <div class="quick">${[12, 24, 36, 60].map((c) => `<button type="button" data-fill="n" data-v="${c}">${duration(c)}</button>`).join('')}</div>
+      ${chips('n', [12, 24, 36, 60], duration)}
       <div class="calc-out"></div>`;
     wire(box, 'kredit', { type: 'ann', extra: '0' }, (s, f) => {
-      const P = Number(digits(f.P.value)) || 0;
+      box.querySelector('#type-hint').textContent = s.type === 'diff'
+        ? "Bank buni «differensial» deydi: boshida ko'proq, keyin har oy kamroq to'laysiz — umumiy foiz kamroq."
+        : "Bank buni «annuitet» deydi: oxirigacha har oy bir xil summa to'laysiz — rejalash oson.";
+      const P = amountOf(f.P);
       const a = pctOf(f.a);
       const n = intOf(f.n);
-      if (!P || !n) { out(box, emptyOut('Summa, foiz va muddatni kiriting — oylik to\'lov va ortiqcha pul darhol chiqadi.')); return; }
+      if (!P || !n) { out(box, emptyOut("Summa, foiz va muddatni kiriting — oylik to'lov va ortiqcha pul darhol chiqadi.")); return; }
       const rows = schedule(P, a, n, s.type);
       const total = rows.reduce((t, x) => t + x.pay, 0);
       const over = total - P;
       const other = schedule(P, a, n, s.type === 'diff' ? 'ann' : 'diff').reduce((t, x) => t + x.pay, 0) - P;
-      const overPct = Math.round((over * 100) / P);
+      const principalShare = Math.round((P * 100) / total);
       const main = s.type === 'diff'
         ? `<div class="big-result"><span>Birinchi oy → oxirgi oy</span><b>${money(rows[0].pay)} → ${money(rows[rows.length - 1].pay)}</b></div>`
-        : `<div class="big-result"><span>Har oylik to'lov</span><b>${money(rows[0].pay)}</b></div>`;
+        : `<div class="big-result"><span>Har oy to'laysiz</span><b>${money(rows[0].pay)}</b></div>`;
       let extraHtml = '';
       if (s.type === 'ann' && a > 0) {
         const ex = Number(s.extra) || 0;
         const c = window.Credit.calc(P, a, n, 0, ex);
         extraHtml = `
           <div class="extra-box">
-            <b>${ic('target')} Har oy qo'shib to'lasam-chi?</b>
+            <b>${ic('target')} Har oy ozgina ko'proq to'lasam-chi?</b>
             <div class="quick">${[0, 10, 20, 30, 50].map((p) => `<button type="button" data-extra="${p}" class="${p === ex ? 'active' : ''}">${p ? `+${p}%` : "Yo'q"}</button>`).join('')}</div>
             ${ex && c.monthsSaved > 0 ? `<p>Har oy <b>${money(c.extraPayment)}</b> to'lasangiz, kredit <b>${duration(c.monthsExtra)}</b> da yopiladi —
               <b class="c-green">${duration(c.monthsSaved)} oldin</b> va <b class="c-green">${money(c.saved)} tejaysiz</b>.</p>`
@@ -154,16 +170,17 @@
         <div class="kv">
           <div><span>Jami qaytarasiz</span><b>${money(total)}</b></div>
           <div><span>Ortiqcha (foizga)</span><b class="c-orange">${money(over)}</b></div>
-          <div><span>Ortiqcha ulushi</span><b>${overPct}%</b></div>
+          <div><span>Ortiqcha ulushi</span><b>${Math.round((over * 100) / P)}%</b></div>
           <div><span>Tugash vaqti</span><b>${monthFrom(n)}</b></div>
         </div>
-        <div class="split-bar"><i style="width:${Math.round((P * 100) / total)}%"></i></div>
-        <p class="muted small">${ic('safe')} Asosiy qarz ${Math.round((P * 100) / total)}% · ${ic('down')} foiz ${100 - Math.round((P * 100) / total)}%</p>
-        ${a > 0 ? `<p class="tip">${ic('bulb')} ${s.type === 'ann'
-          ? `Differensial usulda ortiqcha to'lov <b>${money(other)}</b> — <b>${money(over - other)}</b> kam. Lekin birinchi oylari to'lov kattaroq bo'ladi.`
-          : `Annuitetda har oy bir xil to'laysiz, lekin ortiqcha to'lov <b>${money(other)}</b> — <b>${money(other - over)}</b> ko'p.`}</p>` : ''}
+        <div class="split-bar"><i style="width:${principalShare}%"></i></div>
+        <p class="muted small">${ic('safe')} Olgan pulingiz ${principalShare}% · ${ic('down')} foiz ${100 - principalShare}%</p>
+        ${a > 0 ? `<p class="tip">${ic('bulb')} «${TYPE_NAME[s.type === 'ann' ? 'diff' : 'ann']}» usulida ortiqcha to'lov <b>${money(other)}</b> —
+          ${s.type === 'ann'
+            ? `<b>${money(over - other)}</b> kam, lekin birinchi oylari to'lov kattaroq bo'ladi.`
+            : `<b>${money(other - over)}</b> ko'p, lekin har oy bir xil to'laysiz.`}</p>` : ''}
         ${extraHtml}
-        <button class="btn ghost block mt" id="sch-btn">${ic('calendar')} To'lov jadvali (${rows.length} oy)</button>
+        <button class="btn ghost block mt" id="sch-btn">${ic('calendar')} Oyma-oy to'lov jadvali (${rows.length} oy)</button>
         <div id="sch" hidden></div>`);
       box.querySelectorAll('[data-extra]').forEach((b) => {
         b.onclick = () => { s.extra = b.dataset.extra; haptic('light'); f.P.dispatchEvent(new Event('input')); };
@@ -179,59 +196,7 @@
     });
   }
 
-  // ------------------------------------------------------------ 2. Nasiya
-  /** Nasiyaning yashirin oylik foizi: (narx − boshlang'ich) ni M × n bilan tenglashtiruvchi r (bisektsiya) */
-  function nasiyaRate(financed, M, n) {
-    if (M * n <= financed) return 0;
-    const pv = (r) => (r === 0 ? M * n : M * (1 - (1 + r) ** -n) / r);
-    let lo = 0; let hi = 1;
-    for (let i = 0; i < 100; i += 1) {
-      const mid = (lo + hi) / 2;
-      if (pv(mid) > financed) lo = mid; else hi = mid;
-    }
-    return (lo + hi) / 2;
-  }
-
-  function nasiya(box) {
-    box.innerHTML = `
-      ${moneyField('C', 'Naqd narxi', 'mid', "Do'konda naqd pulga necha pul turadi")}
-      ${moneyField('D', "Boshlang'ich to'lov (bo'lsa)", 'mid')}
-      <div class="form-grid">${moneyField('M', "Oylik to'lov", 'mid')}${monthsField('n', 'Necha oy')}</div>
-      <div class="quick">${[3, 6, 12, 24].map((c) => `<button type="button" data-fill="n" data-v="${c}">${duration(c)}</button>`).join('')}</div>
-      <div class="calc-out"></div>`;
-    wire(box, 'nasiya', {}, (s, f) => {
-      const C = Number(digits(f.C.value)) || 0;
-      const D = Number(digits(f.D.value)) || 0;
-      const M = Number(digits(f.M.value)) || 0;
-      const n = intOf(f.n);
-      if (!C || !M || !n) { out(box, emptyOut("Naqd narx, oylik to'lov va muddatni kiriting — nasiyaning haqiqiy foizini ko'rasiz.")); return; }
-      const total = D + M * n;
-      const over = total - C;
-      if (D >= C) { out(box, emptyOut("Boshlang'ich to'lov naqd narxdan kichik bo'lishi kerak.")); return; }
-      if (over <= 0) {
-        out(box, `<div class="big-result green"><span>Ortiqcha to'lov</span><b>Yo'q — foizsiz nasiya</b></div>
-          <p class="tip">${ic('check')} Jami ${money(total)} to'laysiz — naqd narxdan oshmaydi. Shartnomadagi jarima va qo'shimcha to'lovlarni tekshiring.</p>`);
-        return;
-      }
-      const r = nasiyaRate(C - D, M, n);
-      const annual = Math.round(r * 12 * 1000) / 10;
-      const effective = Math.round(((1 + r) ** 12 - 1) * 1000) / 10;
-      const saveMonths = Math.ceil((C - D) / M);
-      out(box, `
-        <div class="big-result orange"><span>Ortiqcha to'laysiz</span><b>${money(over)}</b></div>
-        <div class="kv">
-          <div><span>Nasiyada jami</span><b>${money(total)}</b></div>
-          <div><span>Narxdan qimmat</span><b class="c-orange">+${Math.round((over * 100) / C)}%</b></div>
-          <div><span>Yillik foiz ekvivalenti</span><b class="c-red">${annual}%</b></div>
-          <div><span>Samarali yillik</span><b>${effective}%</b></div>
-        </div>
-        <p class="tip">${ic('bulb')} Bu nasiya — yillik <b>${annual}%</b> li kredit bilan bir xil.
-          ${annual > 25 ? "Bank kreditidan ham qimmat bo'lishi mumkin." : ''}
-          Agar har oy <b>${money(M)}</b> ni jamg'arsangiz, <b>${duration(saveMonths)}</b> da naqd sotib olib, <b>${money(over)}</b> tejaysiz.</p>`);
-    });
-  }
-
-  // ------------------------------------------------------------ 3. Qarzdan chiqish
+  // ------------------------------------------------------------ 2. Qarzdan chiqish
   function payoff(B0, annual, M) {
     const r = mrate(annual);
     let bal = B0; let months = 0; let paid = 0;
@@ -250,16 +215,16 @@
     const st = state.qarz || { mode: 'when' };
     box.innerHTML = `
       ${seg('mode', [['when', 'Qachon tugaydi?'], ['how', 'Oyiga qancha?']])}
-      ${moneyField('B', 'Qarz qoldig\'i')}
-      <div class="form-grid">${pctField('a', 'Yillik foiz (bo\'lmasa 0)', '0')}
+      ${moneyField('B', "Qarz qoldig'i")}
+      <div class="form-grid">${pctField('a', "Yillik foiz (bo'lmasa 0)", '0')}
         ${st.mode === 'how' ? monthsField('n', 'Necha oyda yopmoqchisiz') : moneyField('M', "Oyiga to'lay olaman", 'mid')}</div>
       <div class="calc-out"></div>`;
     wire(box, 'qarz', { mode: 'when' }, (s, f) => {
-      const B0 = Number(digits(f.B.value)) || 0;
+      const B0 = amountOf(f.B);
       const a = pctOf(f.a);
       if (s.mode === 'how') {
         const n = intOf(f.n);
-        if (!B0 || !n) { out(box, emptyOut('Qarz va muddatni kiriting — har oy qancha to\'lash kerakligini ko\'rasiz.')); return; }
+        if (!B0 || !n) { out(box, emptyOut("Qarz va muddatni kiriting — har oy qancha to'lash kerakligini ko'rasiz.")); return; }
         const M = window.Credit.annuity(B0, a, n);
         out(box, `
           <div class="big-result"><span>Har oy to'lash kerak</span><b>${money(M)}</b></div>
@@ -269,7 +234,7 @@
           <p class="tip">${ic('snow')} Bir nechta qarzingiz bo'lsa, ularni <a class="link" href="/qarzlar/">Qarzlar</a> bo'limiga kiriting — qor bo'lagi usulida qaysi birini birinchi yopishni ko'rsatamiz.</p>`);
         return;
       }
-      const M = Number(digits(f.M.value)) || 0;
+      const M = amountOf(f.M);
       if (!B0 || !M) { out(box, emptyOut("Qarz va oyiga qancha to'lay olishingizni kiriting.")); return; }
       const res = payoff(B0, a, M);
       if (!res) {
@@ -287,93 +252,70 @@
     });
   }
 
-  // ------------------------------------------------------------ 4. Jamg'arma maqsadi
-  function goalMonths(T, S, m, annual) {
-    const r = mrate(annual);
-    let bal = S; let months = 0; let put = S;
-    while (bal < T && months < 1200) {
-      bal = bal * (1 + r) + m;
-      put += m;
-      months += 1;
-    }
-    return months >= 1200 ? null : { months, bal: Math.round(bal), profit: Math.round(bal - put) };
-  }
-
-  function jamgarma(box) {
-    const st = state.jamgarma || { mode: 'when' };
+  // ------------------------------------------------------------ 3. Narxlar va pul qadri
+  function narx(box) {
     box.innerHTML = `
-      ${seg('mode', [['when', 'Qachon yig\'aman?'], ['how', 'Oyiga qancha?']])}
-      ${moneyField('T', 'Maqsad (uy, mashina, to\'y, hajj…)')}
-      ${moneyField('S', 'Hozir bor', 'mid')}
-      <div class="form-grid">
-        ${st.mode === 'how' ? monthsField('n', 'Necha oyda') : moneyField('m', 'Oyiga qo\'yaman', 'mid')}
-        ${pctField('a', 'Depozit foizi (bo\'lsa)', '0')}</div>
+      <p class="muted small">Biror narsaning o'sha yildagi va bugungi narxini yozing — pulingiz qanchalik qadrsizlanganini ko'rasiz.</p>
+      <label class="field"><span>Nima? (ixtiyoriy)</span>
+        <input class="input" data-k="item" data-t="text" maxlength="40" autocomplete="off" placeholder="Masalan: 1 kg go'sht"></label>
+      <label class="field"><span>Qaysi yil?</span>
+        <input class="input" data-k="y" data-t="year" inputmode="numeric" autocomplete="off" placeholder="${THIS_YEAR - 5}" maxlength="4"></label>
+      ${chips('y', [1, 3, 5, 10].map((d) => THIS_YEAR - d), (y) => `${THIS_YEAR - y} yil oldin`)}
+      <div class="form-grid">${moneyField('old', "O'shandagi narxi", 'small')}${moneyField('now', 'Bugungi narxi', 'small')}</div>
+      ${moneyField('S', "O'shanda qancha pulingiz bor edi?", 'mid', "Masalan, oylik maoshingiz yoki jamg'armangiz")}
       <div class="calc-out"></div>`;
-    wire(box, 'jamgarma', { mode: 'when' }, (s, f) => {
-      const T = Number(digits(f.T.value)) || 0;
-      const S = Number(digits(f.S.value)) || 0;
-      const a = pctOf(f.a);
-      const r = mrate(a);
-      if (!T) { out(box, emptyOut("Maqsad summasini kiriting — reja shu yerda chiqadi.")); return; }
-      if (S >= T) { out(box, `<div class="big-result green"><span>Maqsad</span><b>Allaqachon yig'ilgan!</b></div>`); return; }
-      if (s.mode === 'how') {
-        const n = intOf(f.n);
-        if (!n) { out(box, emptyOut('Necha oyda yig\'moqchisiz?')); return; }
-        const grown = S * (1 + r) ** n;
-        const m = Math.max(0, Math.ceil(r ? ((T - grown) * r) / ((1 + r) ** n - 1) : (T - S) / n));
-        out(box, `
-          <div class="big-result green"><span>Har oy qo'yish kerak</span><b>${money(m)}</b></div>
-          <div class="kv"><div><span>Maqsadga yetasiz</span><b>${monthFrom(n)}</b></div>
-            <div><span>O'zingiz qo'yasiz</span><b>${money(S + m * n)}</b></div>
-            ${a ? `<div><span>Foizdan keladi</span><b class="c-green">${money(Math.max(0, T - S - m * n))}</b></div>` : ''}</div>
-          <p class="tip">${ic('bulb')} Avval o'zingizga to'lang: oylik tushishi bilan shu summani darhol jamg'armaga ajrating.</p>`);
+    wire(box, 'narx', {}, (s, f) => {
+      const item = (f.item.value || '').trim();
+      const what = item ? `«${esc(item)}»` : 'bu narsa';
+      const year = Number(digits(f.y.value)) || 0;
+      const oldP = amountOf(f.old);
+      const nowP = amountOf(f.now);
+      const S = amountOf(f.S) || (cur === 'USD' ? 1000 : 1000000);
+      const years = year >= 1950 && year < THIS_YEAR ? THIS_YEAR - year : 0;
+      if (!oldP || !nowP) { out(box, emptyOut("O'shandagi va bugungi narxni kiriting.")); return; }
+      if (f.y.value && !years) { out(box, emptyOut(`Yilni to'g'ri kiriting (masalan, ${THIS_YEAR - 5}).`)); return; }
+
+      const growth = (nowP / oldP - 1) * 100;
+      const yearly = years ? ((nowP / oldP) ** (1 / years) - 1) * 100 : 0;
+      const worth = Math.round((S * oldP) / nowP);           // o'sha pul bugun qancha narsaga yetadi (o'sha paytdagi o'lchovda)
+      const lostPct = Math.round((1 - oldP / nowP) * 100);    // xarid quvvati yo'qotilishi
+      const needToday = Math.round((S * nowP) / oldP);        // o'sha xaridni bugun qilish uchun kerak
+      const qThen = S / oldP;
+      const qNow = S / nowP;
+      const when = years ? `${years} yil oldin` : "O'shanda";
+
+      if (nowP <= oldP) {
+        out(box, `<div class="big-result green"><span>${what} narxi</span><b>${growth < 0 ? `${dec(-growth)}% arzonlashgan` : "O'zgarmagan"}</b></div>
+          <p class="tip">${ic('check')} Bu narsa bo'yicha pulingiz qadrini yo'qotmagan.</p>`);
         return;
       }
-      const m = Number(digits(f.m.value)) || 0;
-      if (!m) { out(box, emptyOut("Oyiga qancha qo'ya olishingizni kiriting.")); return; }
-      const res = goalMonths(T, S, m, a);
-      if (!res) { out(box, emptyOut("Bu sur'atda 100 yildan ko'proq ketadi — oylik summani oshiring.")); return; }
-      const faster = goalMonths(T, S, Math.round(m * 1.2), a);
       out(box, `
-        <div class="big-result green"><span>Maqsadga yetasiz</span><b>${duration(res.months)} · ${monthFrom(res.months)}</b></div>
-        <div class="progress mt"><i data-w="${Math.round((S * 100) / T)}"></i></div>
-        <p class="muted small">Hozir: ${Math.round((S * 100) / T)}% yig'ilgan</p>
-        ${a ? `<div class="kv"><div><span>Foizdan keladi</span><b class="c-green">${money(res.profit)}</b></div></div>` : ''}
-        ${faster && faster.months < res.months ? `<p class="tip">${ic('target')} Oyiga <b>${money(Math.round(m * 1.2))}</b> qo'ysangiz — <b>${duration(faster.months)}</b> da yetasiz.</p>` : ''}`);
+        <div class="big-result red"><span>${what} narxi${years ? ` ${years} yilda` : ''}</span>
+          <b>+${dec(growth)}% · ${dec(nowP / oldP)} barobar</b></div>
+        <div class="kv">
+          ${years ? `<div><span>Yiliga o'rtacha</span><b class="c-orange">+${dec(yearly)}%</b></div>` : ''}
+          <div><span>Pulingiz qadri tushdi</span><b class="c-red">−${lostPct}%</b></div>
+        </div>
+        <div class="worth">
+          <p><b>${when} ${money(S)}</b> bilan:</p>
+          <div class="worth-row"><span>${when}</span><div class="worth-bar"><i style="width:100%"></i></div><b>${dec(qThen)} ta</b></div>
+          <div class="worth-row"><span>Bugun</span><div class="worth-bar now"><i style="width:${Math.max(3, Math.round((qNow / qThen) * 100))}%"></i></div><b>${dec(qNow)} ta</b></div>
+          <p class="muted small">${item ? esc(item) : 'shu narsa'}dan oladi</p>
+        </div>
+        <p class="tip">${ic('alert')} ${when}gi <b>${money(S)}</b> bugun faqat <b>${money(worth)}</b>lik narsaga yetadi —
+          <b>${money(S - worth)}</b> qadri yo'qolgan. O'sha xaridni bugun qilish uchun <b>${money(needToday)}</b> kerak.</p>
+        <p class="tip green-tip">${ic('sprout')} Shuning uchun jamg'armaning <a class="link" href="/jamgarma/">o'sadigan qismi</a>
+          shunchaki uyda yotmasligi kerak: narxlar yiliga ${years ? `~${dec(yearly)}%` : ''} o'ssa, pul ham kamida shuncha o'sadigan joyda tursin.</p>`);
     });
   }
 
-  // ------------------------------------------------------------ 5. Valyuta
-  function valyuta(box) {
-    box.innerHTML = `
-      ${seg('dir', [['uzs', "so'm → $"], ['usd', "$ → so'm"]])}
-      <label class="field"><span>Summa</span><div class="money" id="vx-wrap"><input class="input" data-k="x" inputmode="numeric" autocomplete="off" placeholder="1 000 000"></div></label>
-      <div class="calc-out"></div>`;
-    wire(box, 'valyuta', { dir: 'uzs' }, (s, f) => {
-      box.querySelector('#vx-wrap').style.setProperty('--cur', s.dir === 'uzs' ? `"so'm"` : '"$"');
-      f.x.placeholder = s.dir === 'uzs' ? '1 000 000' : '100';
-      const x = Number(digits(f.x.value)) || 0;
-      if (!rate) { out(box, emptyOut('Markaziy bank kursi yuklanmoqda…')); return; }
-      const r = rate.rate;
-      const usd = x / r;
-      const usdText = usd < 10000 ? usd.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\s/g, ' ') : num(usd);
-      const res = s.dir === 'uzs' ? `$${usdText}` : `${num(Math.round(x * r))} so'm`;
-      out(box, `
-        ${x ? `<div class="big-result"><span>${s.dir === 'uzs' ? `${num(x)} so'm` : `$${num(x)}`} =</span><b>${res}</b></div>` : ''}
-        ${B.rateLine(rate)}
-        <div class="kv">${[1, 100, 1000].map((d) => `<div><span>$${num(d)}</span><b>${num(Math.round(d * r))} so'm</b></div>`).join('')}
-          <div><span>1 mln so'm</span><b>$${num(Math.round(1e6 / r))}</b></div></div>`);
-    });
-  }
-
-  const RENDER = { kredit, nasiya, qarz, jamgarma, valyuta };
+  const RENDER = { kredit, qarz, narx };
 
   // ------------------------------------------------------------ sahifa
   function renderTab() {
     const body = document.getElementById('calc-body');
     body.style.setProperty('--cur', `"${SIGN[cur]}"`);
     document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
-    document.getElementById('cur-seg').hidden = tab === 'valyuta';
     RENDER[tab](body);
   }
 
@@ -382,19 +324,21 @@
     if (RENDER[hash]) tab = hash;
     render(`
       <h1 class="page-title">${ic('calc')} Kalkulyatorlar</h1>
-      <p class="muted">Qarz yoki nasiya olishdan oldin hisoblang: qancha ortiqcha to'laysiz va qachon qutulasiz.</p>
+      <p class="muted">Qarz olishdan oldin hisoblang: qancha ortiqcha to'laysiz va qachon qutulasiz. Narxlar pulingizni qanday yeyayotganini ko'ring.</p>
       <div class="calc-tabs" role="tablist">${TABS.map(([k, i, l]) => `<button type="button" role="tab" data-tab="${k}">${ic(i)}${l}</button>`).join('')}</div>
       <section class="card calc-card">
-        <div class="seg cur-mini" id="cur-seg">${Object.entries(SIGN).map(([c, sgn]) => `<button type="button" data-cur="${c}">${sgn}</button>`).join('')}</div>
+        <div class="seg cur-mini" id="cur-seg">${Object.entries(SIGN).map(([c, sgn]) => `<button type="button" data-pick-cur="${c}">${sgn}</button>`).join('')}</div>
         <div id="calc-body"></div>
       </section>
       ${B.token ? '' : `<section class="card cta-card"><b>Hisob-kitobni har kuni yuritmoqchimisiz?</b>
         <p class="muted small">Baraka Daftari xarajat, jamg'arma va qarzlaringizni kuzatib boradi — bepul.</p>
         <a class="btn block mt" href="/">Batafsil</a></section>`}`);
 
-    const paintCur = () => document.querySelectorAll('[data-cur]').forEach((b) => b.classList.toggle('active', b.dataset.cur === cur));
-    document.querySelectorAll('[data-cur]').forEach((b) => {
-      b.onclick = () => { cur = b.dataset.cur; paintCur(); haptic('light'); renderTab(); };
+    // Diqqat: <html> ning o'zida data-cur atributi bor (common.js), shuning uchun bu yerda data-pick-cur
+    const curBtns = document.querySelectorAll('#cur-seg [data-pick-cur]');
+    const paintCur = () => curBtns.forEach((b) => b.classList.toggle('active', b.dataset.pickCur === cur));
+    curBtns.forEach((b) => {
+      b.onclick = () => { cur = b.dataset.pickCur; paintCur(); haptic('light'); renderTab(); };
     });
     paintCur();
     document.querySelectorAll('[data-tab]').forEach((b) => {
@@ -406,11 +350,6 @@
       };
     });
     renderTab();
-
-    try {
-      rate = (await B.api('rates')).rate;
-      if (tab === 'valyuta') renderTab();
-    } catch (e) { /* kurs bo'lmasa ham boshqa kalkulyatorlar ishlaydi */ }
   }
 
   B.ready(main, { isPublic: true });

@@ -37,6 +37,8 @@ settings_page = page("pages/settings.html", "sozlamalar")
 about = page("pages/about.html", "haqida")
 login = page("pages/login.html", "kirish")
 calculators = page("pages/calc.html", "kalkulyator")
+report = page("pages/report.html", "hisobot")
+contact = page("pages/contact.html", "aloqa")
 _lesson = page("pages/lesson.html", "saboqlar")
 
 

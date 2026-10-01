@@ -10,7 +10,7 @@ class CoreConfig(AppConfig):
         from django.db.models.signals import post_delete, post_save
 
         from . import seo, services
-        from .models import Lesson, SeoSettings
+        from .models import Lesson, SeoSettings, SiteSettings
 
         def clear(**kwargs):
             services.clear_lessons_cache()
@@ -21,3 +21,4 @@ class CoreConfig(AppConfig):
         post_save.connect(clear, sender=Lesson, dispatch_uid="lesson_cache_save")
         post_delete.connect(clear, sender=Lesson, dispatch_uid="lesson_cache_delete")
         post_save.connect(clear_seo, sender=SeoSettings, dispatch_uid="seo_cache_save")
+        post_save.connect(clear_seo, sender=SiteSettings, dispatch_uid="site_cache_save")

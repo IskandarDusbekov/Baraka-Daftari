@@ -3,7 +3,7 @@ import datetime as dt
 import math
 
 from django.core.cache import cache
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
@@ -51,28 +51,22 @@ def clear_lessons_cache():
 
 
 def lesson_states(user, lessons=None):
-    """Har bir saboq uchun holat: done / open / wait (ertaga ochiladi) / locked.
+    """Har bir saboq uchun holat: done / open / locked.
 
-    Qoida: saboqlar ketma-ket o'tiladi va kuniga faqat bitta yangi saboq ochiladi —
-    keyingisi oldingisi bajarilgan kundan keyingi kunda ochiladi.
+    Qoida: saboqlar ketma-ket o'tiladi. Keyingi saboq oldingisining vazifasi bajarilishi
+    bilan darhol ochiladi (kunga bog'liq emas) — vazifani bajarmasdan oldinga o'tib bo'lmaydi.
     """
     lessons = list(lessons if lessons is not None else published_lessons())
     done = {p.lesson_id: p for p in user.progress.all()}
-    today = timezone.localdate()
     result = []
-    prev_done_date = None
     current_found = False
-    for index, lesson in enumerate(lessons):
+    for lesson in lessons:
         progress = done.get(lesson.id)
         if progress:
             state = "done"
-            prev_done_date = timezone.localdate(progress.completed_at)
         elif not current_found:
             current_found = True
-            if index == 0 or (prev_done_date and prev_done_date < today):
-                state = "open"
-            else:
-                state = "wait"
+            state = "open"
         else:
             state = "locked"
         result.append((lesson, state, progress))
@@ -82,7 +76,7 @@ def lesson_states(user, lessons=None):
 def current_lesson(user):
     """Joriy (birinchi bajarilmagan) saboq va uning holati."""
     for lesson, state, _ in lesson_states(user):
-        if state in ("open", "wait"):
+        if state == "open":
             return lesson, state
     return None, "finished"
 
@@ -164,6 +158,49 @@ def month_totals(user, year, month):
         "spent_percent": min(100, round(expense * 100 / base_income)) if base_income else 0,
         # 4-saboq: ro'zg'or (barcha uy xarajatlari) uchun 70% chegara
         "household_limit": base_income * 70 // 100,
+    }
+
+
+# ---------------------------------------------------------------- davr hisoboti (7 / 10 / 30 kun, oy)
+
+def period_report(user, start, end):
+    """[start, end] (ikkalasi ham kiradi) oralig'idagi umumiy hisobot va oldingi teng davr bilan solishtirish."""
+    days = (end - start).days + 1
+    prev_end = start - dt.timedelta(days=1)
+    prev_start = prev_end - dt.timedelta(days=days - 1)
+
+    expenses = user.expenses.filter(date__gte=start, date__lte=end)
+    income = total_of(user.incomes.filter(date__gte=start, date__lte=end))
+    expense = total_of(expenses)
+    agg = user.savings.filter(date__gte=start, date__lte=end).aggregate(
+        saved=Sum("amount", filter=Q(kind="deposit")), withdrawn=Sum("amount", filter=Q(kind="withdraw")),
+    )
+    saved, withdrawn = agg["saved"] or 0, -(agg["withdrawn"] or 0)
+    debt_paid = total_of(DebtPayment.objects.filter(debt__user=user, date__gte=start, date__lte=end))
+    prev_expense = total_of(user.expenses.filter(date__gte=prev_start, date__lte=prev_end))
+
+    labels = dict(Expense.CATEGORIES)
+    by_category = [
+        {"key": r["category"], "label": labels.get(r["category"], r["category"]), "amount": r["s"], "count": r["c"]}
+        for r in expenses.values("category").annotate(s=Sum("amount"), c=Count("id")).order_by("-s")
+    ]
+    by_need = {r["need"] or "unmarked": r["s"] for r in expenses.values("need").annotate(s=Sum("amount"))}
+    per_day = dict(expenses.values("date").annotate(s=Sum("amount")).values_list("date", "s"))
+    daily = [{"date": (start + dt.timedelta(days=i)).isoformat(),
+              "amount": per_day.get(start + dt.timedelta(days=i), 0)} for i in range(days)]
+    top = [{"amount": e.amount, "label": labels.get(e.category, ""), "category": e.category,
+            "note": e.note, "date": e.date.isoformat()} for e in expenses.order_by("-amount", "-date")[:5]]
+    past_days = min(days, (min(end, timezone.localdate()) - start).days + 1)
+    return {
+        "start": start.isoformat(), "end": end.isoformat(), "days": days,
+        "income": income, "expense": expense, "saved": saved, "withdrawn": withdrawn, "debt_paid": debt_paid,
+        "net": income - expense - saved + withdrawn,
+        "daily_avg": expense // past_days if past_days > 0 else 0,
+        "days_with_entries": len(per_day),
+        "prev_expense": prev_expense,
+        "change_pct": round((expense - prev_expense) * 100 / prev_expense) if prev_expense else None,
+        "by_category": by_category, "by_need": by_need, "daily": daily, "top": top,
+        "save_rate": round(saved * 100 / income) if income else 0,
     }
 
 

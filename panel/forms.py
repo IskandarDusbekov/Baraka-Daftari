@@ -2,7 +2,7 @@ import re
 
 from django import forms
 
-from core.models import Broadcast, Lesson, SeoSettings
+from core.models import Broadcast, Lesson, SeoSettings, SiteSettings
 from core.seo import VERIFICATION_NAME
 
 YOUTUBE_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
@@ -106,6 +106,45 @@ class SeoForm(forms.ModelForm):
             if not line.lower().startswith(allowed):
                 raise forms.ValidationError(f"Noto'g'ri qator: «{line[:40]}». Faqat Allow/Disallow/User-agent/Sitemap")
         return "\n".join(lines)
+
+
+class SiteSettingsForm(forms.ModelForm):
+    class Meta:
+        model = SiteSettings
+        fields = [
+            "author_youtube", "author_instagram", "author_telegram",
+            "contact_telegram", "contact_channel", "contact_instagram", "contact_phone", "contact_email", "contact_hours",
+        ]
+        widgets = {
+            "author_youtube": forms.URLInput(attrs={"placeholder": "https://www.youtube.com/@…"}),
+            "author_instagram": forms.URLInput(attrs={"placeholder": "https://www.instagram.com/…"}),
+            "author_telegram": forms.URLInput(attrs={"placeholder": "https://t.me/…"}),
+            "contact_telegram": forms.TextInput(attrs={"placeholder": "@username"}),
+            "contact_channel": forms.URLInput(attrs={"placeholder": "https://t.me/…"}),
+            "contact_instagram": forms.URLInput(attrs={"placeholder": "https://www.instagram.com/…"}),
+        }
+
+    def clean(self):
+        data = super().clean()
+        # Sahifada faqat xavfsiz https havolalar chiqadi
+        for name in ("author_youtube", "author_instagram", "author_telegram", "contact_channel", "contact_instagram"):
+            value = (data.get(name) or "").strip()
+            if value and not value.startswith("https://"):
+                self.add_error(name, "Havola https:// bilan boshlanishi kerak")
+        return data
+
+    def clean_contact_telegram(self):
+        value = (self.cleaned_data.get("contact_telegram") or "").strip()
+        username = value.replace("https://t.me/", "").replace("http://t.me/", "").lstrip("@").strip("/")
+        if username and not re.fullmatch(r"[A-Za-z0-9_]{4,32}", username):
+            raise forms.ValidationError("Telegram username: faqat harf, raqam va _ (masalan @baraka_admin)")
+        return f"@{username}" if username else ""
+
+    def clean_contact_phone(self):
+        value = (self.cleaned_data.get("contact_phone") or "").strip()
+        if value and not re.fullmatch(r"\+?[\d\s()\-]{7,20}", value):
+            raise forms.ValidationError("Telefon raqamini tekshiring (masalan +998 90 123 45 67)")
+        return value
 
 
 def _meta_token(value):

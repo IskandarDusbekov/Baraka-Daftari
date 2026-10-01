@@ -5,8 +5,7 @@ nazorat qilish va qarzdan qutulishni Abdukarim Mirzayevning haftalik saboqlari a
 qadamlar bilan o'rgatadigan raqamli daftar.
 
 > **Ushbu loyiha Abdukarim Mirzayevning «Baraka Daftari» ko'rsatuvidan ilhomlangan holda, insonlarga
-> qulaylik yaratish maqsadida ishlab chiqildi. Barcha huquqlar va asl g'oya muallifi Abdukarim
-> Mirzayevga tegishli.**
+> qulaylik yaratish maqsadida ishlab chiqildi.**
 
 ## Imkoniyatlar
 
@@ -49,7 +48,7 @@ qadamlar bilan o'rgatadigan raqamli daftar.
   Qo'shimcha to'lov asosiy qarzga ketadi: har to'lovdan keyin qolgan foiz qayta hisoblanadi.
 * **Bosh sahifa**: eng tepada «Bu oy qolgan pulingiz» (daromad − xarajat − zaxira) va tezkor
   «− Xarajat» tugmasi. Hamyonda xarajat formasi eng tepada.
-* Saboqlar ketma-ket o'tiladi, **kuniga bittadan** ochiladi. Barcha vazifalar belgilanmaguncha
+* Saboqlar ketma-ket o'tiladi: keyingisi **oldingi saboqning vazifasi bajarilgandagina** ochiladi. Barcha vazifalar belgilanmaguncha
   «Saboqni yakunladim» tugmasi o'chiq; ilovadagi amal (masalan, daromad kiritish) serverda tekshiriladi.
 * **Bot**: yangi saboq e'loni (admin'dan), ertalab ochiq saboq eslatmasi (08:00), kechqurun (20:00) —
   agar bugun xarajat kiritilmagan bo'lsa — eslatma. `/eslatma` bilan o'chirish mumkin.

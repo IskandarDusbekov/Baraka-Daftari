@@ -457,11 +457,12 @@ class LessonTests(ApiTestCase):
         self.assertEqual(self.get("/api/lessons").json()["lessons"], [])
         self.assertIsNone(self.get("/api/me").json()["lessons"]["current"])
 
-    def test_one_saboq_per_day(self):
+    def test_next_saboq_opens_after_task_done(self):
         lessons = self.get("/api/lessons").json()["lessons"]
         self.assertEqual(len(lessons), 3)  # nashr qilinmagani ko'rinmaydi
         self.assertEqual(lessons[0]["state"], "open")
         self.assertEqual(lessons[1]["state"], "locked")
+        self.assertEqual(self.get("/api/lessons/2").status_code, 403)  # vazifa bajarilmaguncha yopiq
 
         detail = self.get("/api/lessons/1").json()["lesson"]
         self.assertEqual(detail["key_points"], ["Birinchi saboq", "Ikkinchi saboq"])
@@ -472,14 +473,11 @@ class LessonTests(ApiTestCase):
         r = self.post("/api/lessons/1/complete", {"note": "Qarzsiz yashash"})
         self.assertEqual(r.json(), {"ok": True, "done": 1, "total": 3})
 
+        # vazifa bajarilishi bilan keyingisi darhol ochiladi (kutish yo'q), undan keyingisi hali yopiq
         lessons = self.get("/api/lessons").json()["lessons"]
-        self.assertEqual(lessons[1]["state"], "wait")
-        self.assertEqual(self.get("/api/lessons/2").status_code, 403)
-        self.assertEqual(self.post("/api/lessons/2/complete").status_code, 403)
-
-        # ertasi kun ochiladi
-        LessonProgress.objects.update(completed_at=timezone.now() - dt.timedelta(days=1))
-        self.assertEqual(self.get("/api/lessons").json()["lessons"][1]["state"], "open")
+        self.assertEqual(lessons[1]["state"], "open")
+        self.assertEqual(lessons[2]["state"], "locked")
+        self.assertEqual(self.get("/api/lessons/2").status_code, 200)
 
         # 2-saboq: oylik daromad kiritilmaguncha bajarilmaydi
         r = self.post("/api/lessons/2/complete")
@@ -695,7 +693,8 @@ class PageTests(BaseTestCase):
         r = self.client.get("/")
         self.assertContains(r, "landing.js")
         self.assertContains(r, "Niyat")  # saboqlar mundarijasi bazadan
-        self.assertContains(r, "Barcha huquqlar va asl g'oya")
+        self.assertContains(r, "ko'rsatuvidan ilhomlangan holda")
+        self.assertNotContains(r, "Barcha huquqlar")
 
     def test_pages_render_separately(self):
         pages = {
@@ -711,7 +710,9 @@ class PageTests(BaseTestCase):
             self.assertContains(r, 'id="i-safe"')  # SVG sprite
 
     def test_login_has_disclaimer(self):
-        self.assertContains(self.client.get("/kirish/"), "Barcha huquqlar va asl g'oya")
+        r = self.client.get("/kirish/")
+        self.assertContains(r, "ko'rsatuvidan ilhomlangan holda")
+        self.assertNotContains(r, "Barcha huquqlar")
 
     @override_settings(WEBAPP_URL="https://baraka.example.uz/")
     def test_bot_links_point_to_pages(self):
@@ -1044,3 +1045,62 @@ class CalculatorPageTests(BaseTestCase):
         self.assertIn("Allow: /kalkulyator/", self.client.get("/robots.txt").content.decode())
         # ilova sahifalari esa indekslanmaydi
         self.assertContains(self.client.get("/hamyon/"), 'content="noindex, nofollow"')
+
+
+class SiteSettingsTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        from django.contrib.auth.models import User
+        User.objects.create_user("boss", password="Kuchli-parol-2026", is_staff=True)
+        self.client.login(username="boss", password="Kuchli-parol-2026")
+
+    def test_links_saved_and_public(self):
+        self.assertEqual(self.client.get("/boshqaruv/sozlamalar/").status_code, 200)
+        r = self.client.post("/boshqaruv/sozlamalar/", {
+            "author_youtube": "https://www.youtube.com/@kanal", "contact_telegram": "https://t.me/baraka_admin",
+            "contact_phone": "+998 90 123 45 67", "contact_email": "info@barakadaftari.uz",
+        })
+        self.assertEqual(r.status_code, 302)
+        data = self.client.get("/api/site").json()
+        self.assertEqual(data["author"], {"youtube": "https://www.youtube.com/@kanal"})
+        self.assertEqual(data["contact"]["telegram"], "https://t.me/baraka_admin")
+        self.assertEqual(data["contact"]["telegram_name"], "@baraka_admin")
+        self.assertEqual(data["contact"]["phone"], "+998901234567")
+
+    def test_unsafe_links_rejected(self):
+        from core.models import SiteSettings
+        r = self.client.post("/boshqaruv/sozlamalar/", {"author_instagram": "http://instagram.com/x", "contact_telegram": "<script>"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(SiteSettings.load().author_instagram, "")
+
+    def test_about_and_calculator_public(self):
+        self.client.logout()
+        self.assertEqual(self.client.get("/haqida/").status_code, 200)
+        self.assertEqual(self.client.get("/api/site").status_code, 200)
+
+
+class ReportTests(ApiTestCase):
+    def test_week_and_month_report(self):
+        today = timezone.localdate()
+        self.user.incomes.create(amount=1_000_000, date=today)
+        self.user.expenses.create(amount=200_000, category="food", need="zarur", date=today)
+        self.user.expenses.create(amount=50_000, category="events", need="havas", date=today - dt.timedelta(days=2))
+        self.user.expenses.create(amount=100_000, category="food", date=today - dt.timedelta(days=9))  # oldingi 7 kun
+        self.user.savings.create(amount=100_000, bucket="guard", kind="deposit", date=today)
+        r = self.get("/api/report?period=7").json()
+        self.assertEqual((r["days"], r["income"], r["expense"], r["saved"]), (7, 1_000_000, 250_000, 100_000))
+        self.assertEqual(r["net"], 650_000)
+        self.assertEqual(r["by_category"][0]["key"], "food")
+        self.assertEqual(r["by_need"]["havas"], 50_000)
+        self.assertEqual(r["prev_expense"], 100_000)
+        self.assertEqual(r["change_pct"], 150)
+        self.assertEqual(len(r["daily"]), 7)
+        self.assertEqual(r["top"][0]["amount"], 200_000)
+        self.assertEqual(self.get("/api/report?period=10").json()["expense"], 350_000)
+        month = self.get(f"/api/report?period=month&month={today:%Y-%m}").json()
+        self.assertIn("month", month)
+        self.assertEqual(self.get("/api/report?period=999").status_code, 400)
+
+    def test_pages(self):
+        self.assertContains(self.client.get("/hisobot/"), "report.js")
+        self.assertContains(self.client.get("/aloqa/"), "contact.js")

@@ -104,7 +104,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .tabbar {
   position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); z-index: 30;
   width: 100%; max-width: 560px;
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(5, 1fr);
   height: calc(var(--tabbar-h) + var(--safe-b)); padding-bottom: var(--safe-b);
   background: rgba(255, 255, 255, .96); backdrop-filter: blur(12px);
   border-top: 1px solid var(--line);
@@ -689,6 +689,40 @@ textarea.input { min-height: 96px; resize: vertical; }
 .treasure span { display: block; }
 .treasure b { display: block; font-size: 32px; font-weight: 900; }
 
+/* ---------- hisobot ---------- */
+.day-bars { display: flex; align-items: flex-end; gap: 3px; height: 130px; padding-bottom: 18px; }
+.day-bar { flex: 1; height: 100%; position: relative; display: flex; align-items: flex-end; }
+.day-bar i { display: block; width: 100%; background: var(--orange-2); border-radius: 5px 5px 2px 2px; }
+.day-bar em { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 11px; font-style: normal; color: var(--muted); font-weight: 800; }
+.cat-report { list-style: none; margin: 0; padding: 0; }
+.cat-report li { display: flex; gap: 12px; align-items: center; padding: 8px 0; }
+.cat-report li + li { border-top: 1px solid var(--line); }
+.cat-report .e-icon {
+  width: 40px; height: 40px; border-radius: 13px; display: grid; place-items: center; flex: 0 0 auto;
+  color: var(--c, var(--muted)); background: color-mix(in srgb, var(--c, #94a3b8) 14%, #fff);
+}
+.cr-main { flex: 1; min-width: 0; }
+.cr-top { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; }
+.cr-top span { font-weight: 900; white-space: nowrap; }
+.cr-main .progress { margin: 6px 0 2px; }
+.kv small { display: block; font-size: 11px; font-weight: 700; }
+.month-switch.card { padding: 10px 12px; margin-bottom: 0; }
+.icon-btn[disabled] { opacity: .35; pointer-events: none; }
+
+/* ---------- menyu ---------- */
+.h-ico.gray { background: #f1f5f9; color: #475569; }
+.h-ico.gold { background: var(--gold-soft); color: #b45309; }
+.h-ico.red { background: #fee2e2; color: var(--red); }
+.menu-grid { display: flex; flex-direction: column; gap: 8px; }
+.menu-item {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; cursor: pointer;
+  background: #fff; border: 2px solid transparent; border-radius: 18px; padding: 12px 14px; box-shadow: var(--shadow); color: var(--text);
+}
+.menu-item b { display: block; font-size: 16px; }
+.menu-item small { display: block; color: var(--muted); font-size: 13px; font-weight: 700; }
+.menu-item.on { border-color: var(--green-2); }
+.menu-item:active { transform: scale(.98); }
+
 /* ---------- kalkulyatorlar ---------- */
 .calc-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 14px -16px 12px; padding: 2px 16px; }
 .calc-tabs::-webkit-scrollbar { display: none; }
@@ -728,6 +762,14 @@ textarea.input { min-height: 96px; resize: vertical; }
 .sch th:first-child, .sch td:first-child { text-align: left; }
 .sch th { position: sticky; top: 0; background: #f8fafc; color: var(--muted); font-size: 12px; }
 .cta-card { text-align: center; }
+.worth { border-radius: 16px; background: #f8fafc; padding: 12px 14px; }
+.worth > * + * { margin-top: 8px; }
+.worth-row { display: grid; grid-template-columns: 92px 1fr auto; gap: 10px; align-items: center; font-size: 13px; font-weight: 800; }
+.worth-row span { color: var(--muted); }
+.worth-bar { height: 14px; border-radius: 99px; background: #e2e8f0; overflow: hidden; }
+.worth-bar i { display: block; height: 100%; background: var(--green-2); border-radius: 99px; }
+.worth-bar.now i { background: var(--red); }
+.tip.green-tip { background: var(--green-soft); color: #14532d; }
 .tool-link { display: flex; align-items: center; gap: 12px; }
 .tool-link .t-main { flex: 1; }
 .tool-link .t-main small { display: block; color: var(--muted); font-size: 13px; }
@@ -798,10 +840,11 @@ textarea.input { min-height: 96px; resize: vertical; }
 .feature b { display: block; margin: 6px 0 2px; }
 .feature p { font-size: 13px; color: var(--muted); }
 .steps { counter-reset: st; list-style: none; padding: 0; margin: 0; }
-.steps li { display: flex; gap: 12px; align-items: flex-start; padding: 8px 0; }
+/* Raqam chapda alohida turadi, matn esa (qalin so'zlar bilan birga) oddiy qator bo'lib oqadi */
+.steps li { position: relative; padding: 10px 0 10px 42px; min-height: 50px; line-height: 1.45; }
 .steps li::before {
-  counter-increment: st; content: counter(st); flex: 0 0 30px; height: 30px; border-radius: 50%;
-  display: grid; place-items: center; background: var(--green-2); color: #fff; font-weight: 900;
+  counter-increment: st; content: counter(st); position: absolute; left: 0; top: 7px; width: 30px; height: 30px;
+  border-radius: 50%; display: grid; place-items: center; background: var(--green-2); color: #fff; font-weight: 900;
 }
 .login-wait { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); }
 .login-wait .spinner { width: 20px; height: 20px; border-width: 3px; }

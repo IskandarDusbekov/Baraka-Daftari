@@ -1,0 +1,36 @@
+{% extends "panel/base.html" %}
+{% block title %}Sozlamalar{% endblock %}
+{% block content %}
+<header class="p-head"><h1>Sayt sozlamalari</h1>
+  <a class="p-btn ghost sm" href="/haqida/#aloqa" target="_blank" rel="noopener">«Loyiha haqida» sahifasini ochish</a>
+</header>
+
+<form method="post" class="p-form wide" data-dirty-guard>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<p class="p-msg error">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+
+  <section class="p-card">
+    <div class="p-card-head"><h2>Abdukarim Mirzayev sahifalari</h2></div>
+    <p class="p-muted small">«Loyiha haqida» sahifasida ko'rinadi. Bo'sh qoldirilgan havola chiqmaydi.</p>
+    <div class="p-grid3 tight">
+      {% for field in form %}{% if field.name|slice:":7" == "author_" %}
+      <label><span>{{ field.label }}</span>{{ field }}{% for e in field.errors %}<small class="err">{{ e }}</small>{% endfor %}</label>
+      {% endif %}{% endfor %}
+    </div>
+  </section>
+
+  <section class="p-card">
+    <div class="p-card-head"><h2>Biz bilan bog'lanish</h2></div>
+    <p class="p-muted small">Hech narsa kiritilmasa, foydalanuvchilarga bot havolasi ko'rsatiladi.</p>
+    <div class="p-grid2 tight">
+      {% for field in form %}{% if field.name|slice:":8" == "contact_" %}
+      <label><span>{{ field.label }}</span>{{ field }}
+        {% if field.help_text %}<small class="p-muted">{{ field.help_text }}</small>{% endif %}
+        {% for e in field.errors %}<small class="err">{{ e }}</small>{% endfor %}</label>
+      {% endif %}{% endfor %}
+    </div>
+  </section>
+
+  <div class="form-bar"><button class="p-btn" type="submit">Saqlash</button></div>
+</form>
+{% endblock %}

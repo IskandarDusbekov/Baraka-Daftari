@@ -47,7 +47,7 @@
     page.querySelectorAll('button.node').forEach((b) => {
       b.onclick = () => {
         haptic('warning');
-        toast(b.dataset.state === 'wait' ? 'Bu saboq ertaga ochiladi. Kuniga bitta saboq!' : 'Avval oldingi saboqlarni bajaring');
+        toast("Avval oldingi saboqning vazifasini bajaring — shunda bu saboq ochiladi");
       };
     });
     const open = page.querySelector('.node.open');

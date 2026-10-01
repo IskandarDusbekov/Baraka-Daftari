@@ -328,7 +328,7 @@ def me(request):
     today = timezone.localdate()
     states = services.lesson_states(user)
     done = sum(1 for _, s, _ in states if s == "done")
-    current = next(((l, s) for l, s, _ in states if s in ("open", "wait")), None)
+    current = next(((l, s) for l, s, _ in states if s == "open"), None)
     return JsonResponse({
         "user": user_json(user),
         "config": config_json(),
@@ -417,6 +417,39 @@ def set_currency(request):
 @endpoint(["GET"], auth=False)
 def usd_rate(request):
     return JsonResponse({"rate": rates.usd_rate()})
+
+
+REPORT_PERIODS = {"7": 7, "10": 10, "30": 30}
+
+
+@endpoint(["GET"])
+def report(request):
+    """Umumiy hisobot: ?period=7|10|30 (oxirgi N kun) yoki ?period=month&month=YYYY-MM."""
+    user = request.tg_user
+    services.ensure_recurring(user)
+    period = request.GET.get("period", "7")
+    today = timezone.localdate()
+    if period == "month":
+        year, month = services.parse_month(request.GET.get("month"))
+        start, end = services.month_bounds(year, month)
+        end -= dt.timedelta(days=1)
+        data = services.period_report(user, start, end)
+        data["month"] = services.month_totals(user, year, month)
+        data["month_key"] = f"{year:04d}-{month:02d}"
+    elif period in REPORT_PERIODS:
+        start = today - dt.timedelta(days=REPORT_PERIODS[period] - 1)
+        data = services.period_report(user, start, today)
+    else:
+        raise ApiError("Noto'g'ri davr")
+    return JsonResponse({"period": period, **data})
+
+
+@endpoint(["GET"], auth=False)
+def site_info(request):
+    """«Loyiha haqida»: muallif sahifalari va biz bilan bog'lanish (admin panelda sozlanadi)."""
+    from .seo import site_links
+
+    return JsonResponse(site_links())
 
 
 # ---------------------------------------------------------------- hamyon
@@ -838,10 +871,8 @@ def lessons(request):
 def lesson_detail(request, number):
     for lesson, state, progress in services.lesson_states(request.tg_user):
         if lesson.number == number:
-            if state == "wait":
-                raise ApiError("Bu saboq ertaga ochiladi. Kuniga bitta saboq!", 403)
             if state == "locked":
-                raise ApiError("Avval oldingi saboqlarni bajaring", 403)
+                raise ApiError("Avval oldingi saboqning vazifasini bajaring — shunda bu saboq ochiladi", 403)
             return JsonResponse({"lesson": lesson_json(lesson, state, progress, full=True)})
     raise ApiError("Saboq topilmadi", 404)
 
@@ -855,10 +886,8 @@ def lesson_complete(request, number):
             continue
         if state == "done":
             return JsonResponse({"ok": True, "already": True})
-        if state == "wait":
-            raise ApiError("Bu saboq ertaga ochiladi. Kuniga bitta saboq!", 403)
         if state == "locked":
-            raise ApiError("Avval oldingi saboqlarni bajaring", 403)
+            raise ApiError("Avval oldingi saboqning vazifasini bajaring — shunda bu saboq ochiladi", 403)
         ok, reason, page = services.task_requirement_met(user, lesson, request.data)
         if not ok:
             raise ApiError(reason, 400, need=page)

@@ -488,6 +488,33 @@ class SeoSettings(models.Model):
         return obj
 
 
+class SiteSettings(models.Model):
+    """Sayt sozlamalari (bitta yozuv, pk=1): muallif sahifalari va biz bilan bog'lanish.
+
+    Admin panel → Sozlamalar bo'limida tahrirlanadi; «Loyiha haqida» sahifasida ko'rinadi.
+    """
+
+    author_youtube = models.URLField("Abdukarim Mirzayev — YouTube", blank=True)
+    author_instagram = models.URLField("Abdukarim Mirzayev — Instagram", blank=True)
+    author_telegram = models.URLField("Abdukarim Mirzayev — Telegram kanal", blank=True)
+    contact_telegram = models.CharField("Telegram (admin)", max_length=64, blank=True, help_text="@username — savollar uchun")
+    contact_channel = models.URLField("Bizning Telegram kanal", blank=True)
+    contact_instagram = models.URLField("Bizning Instagram", blank=True)
+    contact_phone = models.CharField("Telefon", max_length=32, blank=True, help_text="+998 90 123 45 67")
+    contact_email = models.EmailField("Email", blank=True)
+    contact_hours = models.CharField("Ish vaqti", max_length=80, blank=True, help_text="Masalan: Har kuni 9:00–21:00")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Sayt sozlamalari"
+        verbose_name_plural = "Sayt sozlamalari"
+
+    @classmethod
+    def load(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
 class VerificationFile(models.Model):
     """Google / Yandex / Bing sayt egaligini tasdiqlash fayli (masalan google1a2b3c.html).
 

@@ -52,6 +52,45 @@ def seo_data():
 
 def clear_cache():
     cache.delete(CACHE_KEY)
+    cache.delete(SITE_CACHE_KEY)
+
+
+# ---------------------------------------------------------------- sayt havolalari (Loyiha haqida)
+
+SITE_CACHE_KEY = "site:links:v1"
+
+
+def _telegram_link(value):
+    value = (value or "").strip()
+    if not value:
+        return ""
+    if value.startswith("https://"):
+        return value
+    username = value.lstrip("@").split("/")[-1]
+    return f"https://t.me/{username}" if re.fullmatch(r"[A-Za-z0-9_]{4,32}", username) else ""
+
+
+def site_links():
+    """Muallif sahifalari va aloqa ma'lumotlari (ochiq; 10 daqiqa keshlanadi)."""
+    data = cache.get(SITE_CACHE_KEY)
+    if data is None:
+        from .models import SiteSettings
+
+        s = SiteSettings.load()
+        phone = re.sub(r"[^\d+]", "", s.contact_phone or "")
+        data = {
+            "author": {k: v for k, v in {
+                "youtube": s.author_youtube, "instagram": s.author_instagram, "telegram": s.author_telegram,
+            }.items() if v},
+            "contact": {k: v for k, v in {
+                "telegram": _telegram_link(s.contact_telegram),
+                "telegram_name": "@" + s.contact_telegram.strip().lstrip("@").split("/")[-1] if s.contact_telegram else "",
+                "channel": s.contact_channel, "instagram": s.contact_instagram,
+                "phone": phone, "phone_label": s.contact_phone, "email": s.contact_email, "hours": s.contact_hours,
+            }.items() if v},
+        }
+        cache.set(SITE_CACHE_KEY, data, 600)
+    return data
 
 
 def context(request):

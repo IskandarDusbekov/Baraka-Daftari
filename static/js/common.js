@@ -12,8 +12,7 @@
 
   const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
   const DISCLAIMER = "Ushbu loyiha Abdukarim Mirzayevning «Baraka Daftari» ko'rsatuvidan ilhomlangan holda, " +
-    "insonlarga qulaylik yaratish maqsadida ishlab chiqildi. Barcha huquqlar va asl g'oya muallifi " +
-    'Abdukarim Mirzayevga tegishli.';
+    'insonlarga qulaylik yaratish maqsadida ishlab chiqildi.';
 
   // ------------------------------------------------------------------ utils
   const store = {
@@ -182,6 +181,34 @@
     syncBackButton();
     if (cb && !silent) cb();
   }
+
+  // ------------------------------------------------------------------ menyu (pastki paneldagi 5-tugma)
+  const MENU = [
+    ['/hisobot/', 'chart', 'blue', 'Hisobot', '7 kunlik, 10 kunlik, oylik umumiy hisob'],
+    ['/jamgarma/', 'safe', 'green', "Jamg'arma", "Qo'riqchi va o'sadigan pul"],
+    ['/kalkulyator/', 'calc', 'blue', 'Kalkulyatorlar', "Kredit, qarz, narxlar"],
+    ['/sozlamalar/', 'gear', 'purple', 'Sozlamalar', 'Valyuta, daromad, eslatmalar'],
+    ['/haqida/', 'info', 'orange', 'Loyiha haqida', 'Abdukarim Mirzayev saboqlari'],
+    ['/aloqa/', 'chat', 'gray', "Biz bilan bog'lanish", 'Savol, taklif yoki xato'],
+  ];
+
+  function menuSheet() {
+    const here = location.pathname;
+    const body = openSheet(`
+      <h2>Menyu</h2>
+      <nav class="menu-grid">${MENU.map(([href, icon, color, title, hint]) => `
+        <a href="${href}" class="menu-item ${here === href ? 'on' : ''}">
+          <span class="h-ico ${color}">${ic(icon)}</span><span><b>${title}</b><small>${hint}</small></span></a>`).join('')}
+        <button type="button" class="menu-item" id="menu-rate"><span class="h-ico gold">${ic('star')}</span><span><b>Baho berish</b><small>Ilova sizga yoqdimi?</small></span></button>
+      </nav>`);
+    body.querySelector('#menu-rate').onclick = () => { closeSheet(true); setTimeout(() => ratingModal(), 250); };
+    // Hozirgi sahifa tanlansa — shunchaki menyuni yopamiz
+    body.querySelectorAll('a.menu-item').forEach((a) => {
+      a.addEventListener('click', (e) => { if (a.pathname === here) { e.preventDefault(); closeSheet(true); } });
+    });
+  }
+  const $menuBtn = document.getElementById('menu-btn');
+  if ($menuBtn) $menuBtn.addEventListener('click', (e) => { e.preventDefault(); haptic('light'); menuSheet(); });
 
   if (tg && tg.BackButton) {
     tg.BackButton.onClick(() => {
@@ -428,8 +455,9 @@
   function saveSheet(amount, incomeId, incomeAmount, after) {
     const body = openSheet(`
       <div class="celebrate"><div class="big-ico green">${ic('safe')}</div></div>
-      ${incomeAmount ? `<h2 class="center">Sizning daromadingiz ${som(incomeAmount)}</h2>
-        <p class="center muted">Shundan <b>${som(amount)}</b> ni avval o'zingizga (zaxiraga) olib qo'ying!</p>`
+      ${incomeAmount ? `<h2 class="center">Siz o'zingizga ${som(amount)} to'lashingiz kerak</h2>
+        <p class="center muted">Daromadingiz ${som(incomeAmount)}. Xarajatdan oldin shu qismini jamg'armaga ajrating —
+          avval o'zingizga to'lang. Summani o'zgartirishingiz mumkin.</p>`
         : `<h2 class="center">O'zingizga to'lang</h2>
         <p class="center muted">Zaxiraga o'tkaziladigan summa:</p>`}
       <label class="field money"><input class="input" id="save-amt" inputmode="numeric" autocomplete="off"></label>
@@ -441,7 +469,7 @@
         </div>
         <p class="muted small mt">Avtomatik: qo'riqchi pul maqsadga yetguncha unga, keyin o'sadigan pulga.</p>
       </div>
-      <button class="btn big" id="save-go">${ic('check')} Jamg'armaga o'tkazdim</button>
+      <button class="btn big" id="save-go">${ic('check')} Tasdiqlayman — jamg'armaga o'tkazdim</button>
       <button class="btn ghost block" id="save-later">Keyinroq</button>`, after);
     body.querySelector('#save-later').onclick = () => closeSheet();
     const input = body.querySelector('#save-amt');
@@ -571,10 +599,17 @@
       if (type === 'salary' && !amount) { toast('Oylik summangizni kiriting', true); return; }
       if (!(percent >= 1 && percent <= 50)) { toast('Foiz 1 dan 50 gacha bo\'lishi kerak', true); return; }
       try {
-        await api('me', { method: 'POST', body: {
+        const r = await api('me', { method: 'POST', body: {
           income_type: type, monthly_income: type === 'salary' ? amount : 0, save_percent: percent,
         } });
         haptic('success');
+        // Oylik kiritildi — darhol so'raymiz: bu oy o'zingizga to'lash kerak bo'lgan summa (hali to'lanmagan qismi)
+        const need = r.month ? Math.max(0, r.month.should_save - r.month.saved) : 0;
+        if (type === 'salary' && need > 0) {
+          closeSheet(true);
+          setTimeout(() => saveSheet(need, null, amount, after), 320);
+          return;
+        }
         closeSheet();
         toast(type === 'salary'
           ? `Har oy o'zingizga: ${som(part(amount, percent))}`

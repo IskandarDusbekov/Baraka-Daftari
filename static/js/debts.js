@@ -38,7 +38,7 @@
       <button class="add-card" id="add-debt">${ic('plus')} Qarz yoki kredit qo'shish</button>
       <a href="/kalkulyator/#kredit" class="card tool-link">
         <span class="h-ico blue">${ic('calc')}</span>
-        <span class="t-main"><b>Olishdan oldin hisoblang</b><small>Kredit va nasiya kalkulyatori — qancha ortiqcha to'laysiz</small></span>
+        <span class="t-main"><b>Olishdan oldin hisoblang</b><small>Kredit kalkulyatori — qancha ortiqcha to'laysiz va qachon qutulasiz</small></span>
         ${ic('right')}
       </a>
 
