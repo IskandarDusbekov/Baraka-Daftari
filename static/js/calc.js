@@ -231,7 +231,7 @@
           <div class="kv"><div><span>Jami to'laysiz</span><b>${money(M * n)}</b></div>
             <div><span>Foizga ketadi</span><b class="c-orange">${money(M * n - B0)}</b></div>
             <div><span>Qarzdan qutulasiz</span><b>${monthFrom(n)}</b></div></div>
-          <p class="tip">${ic('snow')} Bir nechta qarzingiz bo'lsa, ularni <a class="link" href="/qarzlar/">Qarzlar</a> bo'limiga kiriting — qor bo'lagi usulida qaysi birini birinchi yopishni ko'rsatamiz.</p>`);
+          <p class="tip">${ic('snow')} Bir nechta qarzingiz bo'lsa, ularni <a class="link" href="/qarzlar/">Qarzlar</a> bo'limiga kiriting — qaysi birini birinchi yopishni ko'rsatamiz.</p>`);
         return;
       }
       const M = amountOf(f.M);

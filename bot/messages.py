@@ -57,7 +57,7 @@ def welcome(user):
         "📚 har hafta yangi video bo'yicha saboqlar va amaliy vazifalar olasiz;\n"
         "💰 daromadingizning bir qismini (5–20%) o'zingizga to'laysiz;\n"
         "📒 xarajatlaringizni yozib borasiz;\n"
-        "❄️ qarzlardan «qor bo'lagi» usulida qutulasiz.\n\n"
+        "🎯 qarzlardan aniq reja bilan qutulasiz.\n\n"
         "Yangi saboq qo'shilganda xabar beraman, kechqurun esa xarajatlarni "
         "yozishni eslatib turaman.\n\n"
         f"{DISCLAIMER}"

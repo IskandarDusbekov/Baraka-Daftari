@@ -27,7 +27,7 @@ CATEGORY_BUTTONS = [
     ("clothes", "👕 Kiyim"), ("health", "💊 Sog'liq"),
     ("education", "🎓 Ta'lim"), ("phone", "📱 Aloqa"),
     ("events", "🎉 To'y-marosim"), ("charity", "🤲 Sadaqa"),
-    ("other", "📦 Boshqa"),
+    ("shopping", "🛍 Xaridlar"), ("other", "📦 Boshqa"),
 ]
 SOURCE_BUTTONS = [
     ("salary", "💼 Oylik maosh"), ("extra", "➕ Qo'shimcha"),

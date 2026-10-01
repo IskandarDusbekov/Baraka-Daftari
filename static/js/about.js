@@ -48,7 +48,7 @@
           <li><span class="h-ico blue">${ic('book')}</span><div><b>Saboqlar</b> — har bir video bo'yicha saboq; vazifani bajarsangiz, keyingisi ochiladi.</div></li>
           <li><span class="h-ico green">${ic('wallet')}</span><div><b>Hamyon</b> — xarajatlar, qolgan pul, Zarur · Kerak · Havas.</div></li>
           <li><span class="h-ico green">${ic('safe')}</span><div><b>Jamg'arma</b> — qo'riqchi pul va o'sadigan pul.</div></li>
-          <li><span class="h-ico orange">${ic('snow')}</span><div><b>Qarzlar</b> — 70/20/10 va «qor bo'lagi» rejasi.</div></li>
+          <li><span class="h-ico orange">${ic('snow')}</span><div><b>Qarzlar</b> — qarzdan qutulish rejasi.</div></li>
           <li><span class="h-ico blue">${ic('calc')}</span><div><b>Kalkulyatorlar</b> — kredit, qarzdan chiqish, narxlar va pul qadri.</div></li>
           <li><span class="h-ico purple">${ic('bell')}</span><div><b>Bot</b> — yangi saboq xabari, kechqurun xarajat eslatmasi.</div></li>
         </ul>

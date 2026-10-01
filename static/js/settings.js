@@ -29,8 +29,6 @@
             <button type="button" class="cur-opt ${u.currency === code ? 'active' : ''}" data-cur="${code}">
               <b>${code === 'USD' ? '$' : "so'm"}</b><span>${c.label}</span></button>`).join('')}
         </div>
-        <p class="muted small mt">Barcha summalar faqat shu valyutada yuritiladi — so'm va dollar aralashmaydi.
-          Valyutani almashtirsangiz, eski yozuvlar Markaziy bank kursi bo'yicha qayta hisoblanadi.</p>
         ${B.rateLine(me.rate)}
       </section>
 
@@ -43,9 +41,8 @@
       </section>
 
       <section class="card">
-        <div class="card-title"><h3><span class="h-ico orange">${ic('repeat')}</span> Oylik majburiy xarajatlar</h3><span class="chip gold">ixtiyoriy</span></div>
-        <p class="muted small">Ijara, kommunal, internet kabi har oy takrorlanadigan to'lovlar. Belgilangan kuni xarajat
-          avtomatik yoziladi va «qolgan pul» aniq ko'rinadi.</p>
+        <div class="card-title"><h3><span class="h-ico orange">${ic('repeat')}</span> Har oylik to'lovlar</h3></div>
+        <p class="muted small">Ijara, kommunal, internet — belgilangan kuni o'zi yoziladi.</p>
         ${rec.items.length ? `<ul class="entries mt">${rec.items.map((r) => {
           const c = CATS[r.category] || CATS.other;
           return `<li class="entry ${r.active ? '' : 'off'}">
@@ -64,7 +61,7 @@
 
       <section class="card">
         <div class="card-title"><h3><span class="h-ico blue">${ic('shield')}</span> Qo'riqchi pul</h3></div>
-        <p class="muted small">Og'ir kun uchun necha oylik xarajatga yetadigan pul yig'asiz? (3-saboq: 3–6 oy)</p>
+        <p class="muted small">Og'ir kun uchun necha oylik xarajat yig'asiz?</p>
         <div class="pct-grid four mt">${GUARD_CHOICES.map((m) => `
           <button type="button" class="pct ${u.guard_months === m ? 'active' : ''}" data-guard="${m}"><b>${m} oy</b><small>${me.savings.monthly_need ? B.compact(me.savings.monthly_need * m) : ''}</small></button>`).join('')}
         </div>
@@ -86,15 +83,8 @@
         <p>${esc(u.name)}${u.username ? ` <span class="muted">(@${esc(u.username)})</span>` : ''}</p>
         <button class="btn ghost block mt" id="tour">${ic('book')} Tanishtiruvni qayta ko'rish</button>
         <button class="btn ghost block mt" id="rate">${ic('star')} Ilovaga baho berish</button>
-        <a class="btn ghost block mt" href="/haqida/">${ic('info')} Loyiha haqida</a>
         ${B.IN_TG ? '' : `<button class="btn ghost block mt" id="logout">${ic('logout')} Chiqish</button>`}
-      </section>
-
-      <section class="card">
-        <div class="card-title"><h3><span class="h-ico gray">${ic('lock')}</span> Xavfsizlik</h3></div>
-        <p class="muted small">Telefoningizni yo'qotdingizmi yoki boshqa kompyuterda kirib qoldingizmi? Barcha qurilmalardagi
-          kirishni yoping — keyingi safar Telegram orqali qayta kirasiz.</p>
-        <button class="btn danger block mt" id="logout-all">${ic('logout')} Barcha qurilmalardan chiqish</button>
+        <button class="btn danger block mt" id="logout-all">${ic('lock')} Barcha qurilmalardan chiqish</button>
       </section>`);
 
     page.querySelectorAll('[data-cur]').forEach((b) => {

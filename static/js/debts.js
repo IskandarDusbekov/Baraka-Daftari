@@ -1,4 +1,4 @@
-/* Qarzlar: ro'yxat, kredit kalkulyatori, to'lovlar, "qor bo'lagi" rejasi */
+/* Qarzlar: ro'yxat, kredit kalkulyatori, to'lovlar, "qarzdan qutulish" rejasi (avval eng kichigi) */
 (() => {
   'use strict';
   const { api, esc, num, som, compact, ic, toast, haptic, withBusy, bindMoney, render, digits, MONTHS } = B;
@@ -28,26 +28,20 @@
 
     const page = render(`
       <section class="card debt-hero">
-        <span class="chip on-dark">${ic('snow')} Qarzdan qutulish rejasi</span>
-        <p class="mt" style="opacity:.9">Qolgan qarz</p>
+        <p style="opacity:.9">Qolgan qarz</p>
         <h2>${som(s.remaining)}</h2>
         <div class="progress white"><i data-w="${s.percent}"></i></div>
-        <p class="small" style="opacity:.95">${s.total ? `Qarzning <b>${s.percent}%</b> i to'landi · ${s.count_active} ta faol qarz` : 'Hali qarz kiritilmagan'}</p>
+        <p class="small" style="opacity:.95">${s.total ? `${s.percent}% to'landi · ${s.count_active} ta qarz` : "Qarz yo'q"}</p>
       </section>
 
-      <button class="add-card" id="add-debt">${ic('plus')} Qarz yoki kredit qo'shish</button>
-      <a href="/kalkulyator/#kredit" class="card tool-link">
-        <span class="h-ico blue">${ic('calc')}</span>
-        <span class="t-main"><b>Olishdan oldin hisoblang</b><small>Kredit kalkulyatori — qancha ortiqcha to'laysiz va qachon qutulasiz</small></span>
-        ${ic('right')}
-      </a>
+      <button class="add-card" id="add-debt">${ic('plus')} Qarz qo'shish</button>
 
       ${d.debts.map((x) => debtCard(x, x.id === targetId)).join('')}
 
       ${plan.order.length ? planCard(plan) : ''}
 
       ${!d.debts.length ? `<section class="card empty"><span class="e-ico">${ic('check-circle')}</span>
-        <p>Qarzingiz yo'qmi? Alhamdulillah! Agar bo'lsa — barchasini (kredit, tanishdan qarz, nasiya) shu yerga kiriting.</p></section>` : ''}`);
+        <p>Qarz yo'q — Alhamdulillah!</p></section>` : ''}`);
 
     page.querySelector('#add-debt').onclick = () => debtForm();
     const miBtn = page.querySelector('#mi-btn');
@@ -77,49 +71,46 @@
     }
   }
 
-  // ------------------------------------------------------------------ qor bo'lagi
+  // ------------------------------------------------------------------ qarzdan qutulish rejasi
   function planCard(p) {
     const target = p.order[0];
     let result;
     if (p.months) {
       const faster = p.months_min_only && p.months_min_only > p.months ? p.months_min_only - p.months : 0;
-      result = `<div class="freedom"><span>${ic('sparkles')} Barcha qarzlardan qutulasiz:</span>
-        <b>${p.months} oyda</b><span>${monthName(p.free_date)}</span>
-        ${faster ? `<p class="small" style="margin-top:6px;opacity:.95">Faqat minimal to'lov bilan ${p.months_min_only} oy ketardi — siz ${faster} oy tezroq qutulasiz!</p>` : ''}</div>`;
+      result = `<div class="freedom"><span>${ic('sparkles')} Barcha qarzlardan qutulasiz</span>
+        <b>${p.months} oyda</b><span>${monthName(p.free_date)}${faster ? ` · ${faster} oy tezroq` : ''}</span></div>`;
     } else {
-      result = `<div class="freedom warn">${ic('alert')} Hisoblab bo'lmadi. Qarzlarga oylik to'lov summasini kiriting yoki qo'shimcha summa belgilang.</div>`;
+      result = `<div class="freedom warn">${ic('alert')} Hisoblash uchun qarzlarga oylik to'lovni kiriting.</div>`;
     }
     return `<section class="card plan-card">
-      <div class="card-title"><h3><span class="h-ico blue">${ic('snow')}</span> Qor bo'lagi usuli</h3></div>
-      <p class="muted small">Eng kichik qarzdan boshlang: qolganlariga minimal to'lov, ortgan hamma pul — eng kichigiga. U yopilgach, uning to'lovi keyingisiga qo'shiladi.</p>
-      ${p.income ? `<div class="budget-lines mt">
-        <div><span>Oylik daromad</span><b>${som(p.income)}</b></div>
-        <div><span>O'zingizga (${p.save_percent}%)</span><b>− ${som(p.save)}</b></div>
-        <div><span>Bu oy xarajatlar</span><b>− ${som(p.expense)}</b></div>
-        <div><span>Minimal to'lovlar</span><b>− ${som(p.minimums_total)}</b></div>
-        <div class="sum"><span>Qarzga qo'shimcha</span><b class="${p.free >= 0 ? 'c-green' : 'c-red'}">${p.free >= 0 ? '' : '− '}${som(Math.abs(p.free))}</b></div>
-      </div>` : `<div class="tip">${ic('bulb')} Aniqroq reja uchun <button class="link" id="mi-btn">daromadingizni sozlang</button>.</div>`}
-      ${p.income ? `<div class="rule-box mt">
-        <b>${ic('book')} Sobir hojining qoidasi (4-saboq)</b>
-        <p class="muted small">Qarzdor bo'lsangiz, topganingiz uch bo'lakka bo'linadi:</p>
-        <div class="rule-bar"><i style="flex:70" class="r-home">70%</i><i style="flex:20" class="r-debt">20%</i><i style="flex:10" class="r-self">10%</i></div>
-        <div class="rule-lines">
-          <div><span class="dot r-home"></span>Ro'zg'orga<b>${som(p.rule_70_20_10.home)}</b></div>
-          <p class="muted small" style="margin:-2px 0 4px 18px">Ro'zg'or — barcha uy xarajatlari: ijara, oziq-ovqat, kommunal, kiyim-kechak va boshqalar.
-            Bu oy: <b class="${p.expense > p.rule_70_20_10.home ? 'c-red' : 'c-green'}">${som(p.expense)}</b>${p.expense > p.rule_70_20_10.home ? ' — chegaradan oshdi' : ''}</p>
-          <div><span class="dot r-debt"></span>Qarzga qo'shimcha<b>${som(p.rule_70_20_10.debt)}</b></div>
-          <div><span class="dot r-self"></span>O'zingizga<b>${som(p.rule_70_20_10.self)}</b></div>
-        </div>
-        <button class="btn sm mt" id="rule-go">20% ni qo'shimcha to'lov qilib hisoblash</button>
-      </div>` : ''}
-      <label class="field mt"><span>Har oy qarzga qo'shimcha yo'naltiraman:</span>
+      <div class="card-title"><h3><span class="h-ico blue">${ic('target')}</span> Qarzdan qutulish rejasi</h3></div>
+      ${result}
+      <label class="field mt"><span>Har oy qo'shimcha to'layman</span>
         <div class="row"><div class="money" style="flex:1"><input class="input" id="plan-extra" inputmode="numeric" value="${p.extra}"></div>
         <button class="btn sm" id="plan-go">Hisoblash</button></div></label>
-      ${result}
-      ${p.extra > 0 ? `<div class="tip">${ic('target')} <b>Tavsiya:</b> bu oy qo'shimcha <b>${som(p.extra)}</b> ni «${esc(target.name)}» qarziga yo'naltiring.</div>` : ''}
+      ${p.extra > 0 ? `<div class="tip">${ic('target')} Qo'shimcha <b>${som(p.extra)}</b> ni avval «${esc(target.name)}» ga to'lang.</div>` : ''}
       <ol class="order">${p.order.map((o) => `<li class="${o.target ? 'target' : ''}"><span class="o-main">
           <b>${o.target ? ic('target') + ' ' : ''}${esc(o.name)}</b>
-          <small>${som(o.remaining)}${o.payoff_date ? ` · ${monthName(o.payoff_date)} da yopiladi` : ''}</small></span></li>`).join('')}</ol>
+          <small>${som(o.remaining)}${o.payoff_date ? ` · ${monthName(o.payoff_date)}` : ''}</small></span></li>`).join('')}</ol>
+      ${p.income ? `<details class="more mt"><summary>Batafsil: pul qayerdan topiladi</summary>
+        <div class="budget-lines mt">
+          <div><span>Oylik daromad</span><b>${som(p.income)}</b></div>
+          <div><span>O'zingizga (${p.save_percent}%)</span><b>− ${som(p.save)}</b></div>
+          <div><span>Bu oy xarajatlar</span><b>− ${som(p.expense)}</b></div>
+          <div><span>Minimal to'lovlar</span><b>− ${som(p.minimums_total)}</b></div>
+          <div class="sum"><span>Qarzga qo'shimcha</span><b class="${p.free >= 0 ? 'c-green' : 'c-red'}">${p.free >= 0 ? '' : '− '}${som(Math.abs(p.free))}</b></div>
+        </div>
+        <div class="rule-box mt">
+          <b>70 / 20 / 10 qoidasi</b>
+          <div class="rule-bar"><i style="flex:70" class="r-home">70%</i><i style="flex:20" class="r-debt">20%</i><i style="flex:10" class="r-self">10%</i></div>
+          <div class="rule-lines">
+            <div><span class="dot r-home"></span>Ro'zg'orga<b>${som(p.rule_70_20_10.home)}</b></div>
+            <div><span class="dot r-debt"></span>Qarzga<b>${som(p.rule_70_20_10.debt)}</b></div>
+            <div><span class="dot r-self"></span>O'zingizga<b>${som(p.rule_70_20_10.self)}</b></div>
+          </div>
+          <button class="btn sm mt" id="rule-go">20% bilan hisoblash</button>
+        </div>
+      </details>` : `<div class="tip">${ic('bulb')} Aniqroq reja uchun <button class="link" id="mi-btn">daromadingizni sozlang</button>.</div>`}
     </section>`;
   }
 
@@ -139,7 +130,7 @@
     return `<section class="card debt-card ${x.closed ? 'closed' : ''} ${isTarget ? 'target' : ''}">
       <div class="d-head">
         <span class="d-icon">${ic(x.closed ? 'check-circle' : k.icon)}</span>
-        <div class="d-main"><b>${esc(x.name)}</b><span class="muted small">${sub}${isTarget ? ' · Hozir shunga hujum!' : ''}</span></div>
+        <div class="d-main"><b>${esc(x.name)}</b><span class="muted small">${sub}${isTarget ? ' · birinchi navbatda' : ''}</span></div>
         <span class="pct-badge">${x.percent}%</span>
       </div>
       <div class="progress ${x.closed ? '' : 'orange'}"><i data-w="${x.percent}"></i></div>
@@ -387,7 +378,7 @@
         if (r.just_closed) {
           B.confetti(200);
           B.setSheet(B.celebrate('check-circle', 'Qarz yopildi!',
-            `«${esc(debt.name)}» to'liq to'landi. Alhamdulillah! Endi uning to'lovini keyingi qarzga yo'naltiring — qor bo'lagi kattalashmoqda.`,
+            `«${esc(debt.name)}» to'liq to'landi. Alhamdulillah! Endi uning to'lovini keyingi qarzga yo'naltiring.`,
             '<button class="btn big" id="p-done">Davom etish</button>'))
             .querySelector('#p-done').onclick = () => B.closeSheet();
           B.onSheetClose(main);

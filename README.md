@@ -14,7 +14,7 @@ qadamlar bilan o'rgatadigan raqamli daftar.
 | Landing | `/` | Ochiq sahifa: «daftar» uslubi, saboqlar mundarijasi (bazadan), 70/20/10 kalkulyatori, savollar |
 | Asosiy | `/asosiy/` | Qolgan pul, daromad, jamg'arma va qarzlar, navbatdagi saboq, yutuqlar |
 | Hamyon | `/hamyon/` | Xarajat (11 tur), kirim + foiz kalkulyatori, diagramma, Zarur/Kerak/Havas, tarix (tahrirlash bilan) |
-| Qarzlar | `/qarzlar/` | Qarzlar ro'yxati, to'lovlar, progress bar, **qor bo'lagi** rejasi va qutulish sanasi |
+| Qarzlar | `/qarzlar/` | Qarzlar ro'yxati, to'lovlar, progress bar, **qarzdan qutulish** rejasi va qutulish sanasi |
 | Saboqlar | `/saboqlar/` | Duolingo uslubidagi yo'lka: bajarilgan — yashil, joriy — sariq, qolganlari qulflangan |
 | Saboq | `/saboqlar/<raqam>/` | YouTube video, qisqacha mazmun, **saboqlar** ro'yxati va **nima qilish kerak** (belgilanadigan) |
 | Jamg'arma | `/jamgarma/` | Qo'riqchi pul (3–6 oylik xarajat maqsadi bilan) va o'sadigan pul; qo'shish, o'tkazish, olish, tarix |

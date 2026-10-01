@@ -221,7 +221,7 @@ def savings_report(user):
 
 
 def debts_report(user):
-    """💳 Qarzlar va qor bo'lagi bo'yicha navbatdagi nishon."""
+    """💳 Qarzlar va qarzdan qutulish rejasi bo'yicha navbatdagi nishon."""
     cur = user.currency
     debts = [d for d in user.debts.all() if d.remaining > 0]
     if not debts:
@@ -240,7 +240,7 @@ def debts_report(user):
         lines.append(f"• <b>{escape(d.name)}</b> — {money(d.remaining, cur)}{monthly}")
     if len(debts) > 8:
         lines.append(f"<i>…yana {len(debts) - 8} ta</i>")
-    lines.append(f"\n❄️ <b>Qor bo'lagi:</b> hammasiga minimal to'lab, ortiqcha pulni eng kichigiga — "
+    lines.append(f"\n🎯 <b>Qarzdan qutulish:</b> hammasiga minimal to'lab, ortiqcha pulni avval "
                  f"«{escape(debts[0].name)}» ga yo'naltiring.")
     return "\n".join(lines), _rows(refresh_row("debts", "qarzlar/"))
 

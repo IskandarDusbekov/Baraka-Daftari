@@ -631,6 +631,7 @@
     phone: { label: 'Aloqa', icon: 'phone', color: '#14b8a6' },
     events: { label: "To'y-marosim", icon: 'gift', color: '#d946ef' },
     charity: { label: 'Sadaqa', icon: 'hand', color: '#84cc16' },
+    shopping: { label: 'Xaridlar', icon: 'bag', color: '#f97316' },
     other: { label: 'Boshqalar', icon: 'box', color: '#94a3b8' },
   };
 
@@ -655,7 +656,7 @@
       </div>
       <label class="field money mt"><input class="input" data-exp="amount" inputmode="numeric" placeholder="${ph('small')}" autocomplete="off"></label>
       <div class="mt">
-        <span class="field-label">Bu xarajat qanday? (2-saboq)</span>
+        <span class="field-label">Bu xarajat qanday?</span>
         <div class="needs">${Object.entries(NEEDS).map(([k, n]) => `
           <button type="button" class="need need-${k}" data-need="${k}"><b>${n.label}</b><small>${n.hint}</small></button>`).join('')}
         </div>
@@ -764,7 +765,7 @@
     ['wallet', 'Daromadni sozlang', "Oylik bormi va necha foizini o'zingizga to'laysiz"],
     ['receipt', 'Har kuni xarajat yozing', "Bir daqiqa — pul qayerga ketayotgani ko'rinadi"],
     ['safe', "Avval o'zingizga to'lang", "Daromad tushishi bilan bir qismini jamg'armaga"],
-    ['card', 'Qarzlarni reja bilan yoping', "Kredit kalkulyatori va qor bo'lagi usuli"],
+    ['card', 'Qarzlarni reja bilan yoping', "Kredit kalkulyatori va qarzdan qutulish rejasi"],
     ['book', "Har hafta bitta saboq", "Video, xulosa va amaliy vazifa"],
   ];
 

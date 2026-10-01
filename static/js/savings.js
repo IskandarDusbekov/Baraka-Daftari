@@ -17,7 +17,6 @@
       <section class="card savings-hero">
         <span class="chip on-dark">${ic('safe')} Jamg'armam</span>
         <h2>${som(s.total)}</h2>
-        <p class="small" style="opacity:.92">Pul ikki xil yashaydi: yotgan pul va ishlayotgan pul.</p>
       </section>
 
       <section class="grid2">
@@ -28,13 +27,13 @@
           ${s.guard_target ? `
             <div class="progress thin white"><i data-w="${s.guard_percent}"></i></div>
             <small>${s.months_covered} oyga yetadi · maqsad ${s.guard_months} oy</small>`
-          : '<small>Og\'ir kun uchun turadigan pul</small>'}
+          : '<small>Og\'ir kun uchun</small>'}
         </div>
         <div class="bucket-card grow">
           <span class="stat-ico">${ic('sprout')}</span>
           <span class="stat-label">O'sadigan pul</span>
           <b>${som(s.grow)}</b>
-          <small>Mehnat, savdo, sheriklikka ishlaydi</small>
+          <small>Ishlaydigan pul</small>
         </div>
       </section>
 
@@ -46,24 +45,11 @@
 
       ${s.guard_target ? `
       <section class="card">
-        <div class="card-title"><h3><span class="h-ico blue">${ic('shield')}</span> Qo'riqchi pul maqsadi</h3></div>
-        <p>Bir oylik ro'zg'oringiz taxminan <b>${som(s.monthly_need)}</b>. ${s.guard_months} oylik zaxira uchun
-          <b>${som(s.guard_target)}</b> kerak.</p>
-        <div class="progress mt"><i data-w="${s.guard_percent}"></i></div>
-        <p class="muted small mt">${s.guard >= s.guard_target
-          ? "Qo'riqchi pul to'ldi! Endi yangi jamg'arma o'sadigan pulga yo'naltiriladi."
-          : `Yana <b>${som(s.guard_target - s.guard)}</b> yig'ilsa, maqsadga yetasiz.`}
-          <a class="link" href="/sozlamalar/">Necha oylik — sozlamalarda</a></p>
+        <div class="card-title"><h3><span class="h-ico blue">${ic('shield')}</span> Qo'riqchi pul maqsadi</h3><span class="chip">${s.guard_percent}%</span></div>
+        <div class="progress"><i data-w="${s.guard_percent}"></i></div>
+        <p class="muted small mt">${som(s.guard)} / ${som(s.guard_target)} · ${s.guard_months} oylik xarajat</p>
+        ${s.guard >= s.guard_target ? `<p class="chip mt">${ic('check')} To'ldi — endi o'sadigan pulga</p>` : ''}
       </section>` : ''}
-
-      <section class="card lesson-note">
-        <h3 class="sub-title">${ic('book')} 3-saboqdan</h3>
-        <ul class="plain-list">
-          <li><b>Qo'riqchi pul</b> — 3–6 oylik xarajatga yetadigan, og'ir kunda kerak bo'ladigan pul. Tegmay turadi.</li>
-          <li><b>O'sadigan pul</b> — ishlaydigan pul. Yotgan pulni narx-navo yeydi, ishlayotgan pul o'zi ko'payadi.</li>
-          <li>Pul puldan tug'ilmaydi — mehnatdan, savdodan, sheriklikdan tug'ilsin. Ter, mol, tavakkal bor joyda baraka bo'ladi.</li>
-        </ul>
-      </section>
 
       <section class="card">
         <div class="card-title"><h3><span class="h-ico gray">${ic('history')}</span> Jamg'arma tarixi</h3><span class="muted small">${r.history.count} ta</span></div>

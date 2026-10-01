@@ -3,17 +3,6 @@
   'use strict';
   const { api, esc, som, compact, ic, render, MONTHS } = B;
 
-  function incomeLine(u) {
-    if (u.income_type === 'salary' && u.monthly_income) {
-      return `<b>Oylik: ${som(u.monthly_income)}</b>
-        <span>O'zingizga ${u.save_percent}% — ${som(Math.floor((u.monthly_income * u.save_percent) / 100))} / oy</span>`;
-    }
-    if (u.income_type === 'irregular') {
-      return `<b>Oylik olmayman</b><span>Har bir kirimdan ${u.save_percent}% o'zingizga</span>`;
-    }
-    return `<b>Daromad sozlanmagan</b><span>Oylik bormi yo'qmi va necha foiz to'lashingizni tanlang</span>`;
-  }
-
   async function main() {
     const d = await api('me');
     const u = d.user;
@@ -29,21 +18,19 @@
         <h2 class="bal-amount ${m.left < 0 ? 'neg' : ''}">${m.left < 0 ? '−' : ''}${som(Math.abs(m.left))}</h2>
         ${d.rate ? `<p class="bal-other">${B.otherCurrency(m.left, d.rate)}</p>` : ''}
         <div class="progress white"><i data-w="${m.spent_percent}"></i></div>
-        <p class="bal-hint">Daromadning <b>${m.spent_percent}%</b> i sarflandi${m.income_is_planned ? ' · oylik bo\'yicha' : ''}</p>
-        ${m.planned_pending ? `<p class="bal-planned">${ic('repeat')} Hali to'lanadigan majburiy: <b>${som(m.planned_pending)}</b> → erkin pul:
-          <b>${m.free_after_planned < 0 ? '−' : ''}${som(Math.abs(m.free_after_planned))}</b></p>` : ''}`
+        <p class="bal-hint"><b>${m.spent_percent}%</b> sarflandi</p>
+        ${m.planned_pending ? `<p class="bal-planned">${ic('repeat')} Majburiy to'lovlardan keyin: <b>${m.free_after_planned < 0 ? '−' : ''}${som(Math.abs(m.free_after_planned))}</b></p>` : ''}`
       : `
         <p class="bal-label">${monthName} oyida qolgan pulingiz</p>
         <h2 class="bal-amount">—</h2>
-        <p class="bal-hint">${u.income_type === 'irregular'
-          ? 'Bu oy hali kirim yozilmagan. Pul tushganda «+ Kirim» ni bosing.'
-          : 'Qolgan pulni ko\'rish uchun daromadingizni kiriting: oylik summasini yoki birinchi kirimni.'}</p>`;
+        ${u.income_type === 'irregular' ? '<p class="bal-hint">Pul tushganda «+ Kirim» ni bosing</p>'
+          : `<button class="btn white sm mt" id="setup-btn">${ic('wallet')} Daromadni kiriting</button>`}`;
 
     let task;
     if (!L.total) {
       task = `<section class="card lesson-mini">
         <span class="h-ico blue">${ic('book')}</span>
-        <div><b>Saboqlar tez orada</b><p class="muted small">Har hafta yangi video bilan saboq qo'shiladi — bot xabar beradi.</p></div>
+        <div><b>Saboqlar tez orada</b></div>
       </section>`;
     } else if (cur && cur.state === 'open') {
       task = `<section class="task-card">
@@ -57,8 +44,7 @@
     } else {
       task = `<section class="card lesson-mini">
         <span class="h-ico green">${ic('trophy')}</span>
-        <div><b>Barcha ${L.total} ta saboq o'tildi!</b>
-          <p class="muted small">Yangi video chiqishi bilan keyingi saboq qo'shiladi.</p></div>
+        <div><b>Barcha ${L.total} ta saboq o'tildi!</b></div>
         <a class="icon-btn" href="/saboqlar/" aria-label="Saboqlar">${ic('right')}</a>
       </section>`;
     }
@@ -81,21 +67,14 @@
           <a class="btn ghost-white" href="/hamyon/#kirim">${ic('plus')} Kirim</a>
         </div>
       </section>
-      <a class="rate-chip" href="/sozlamalar/#valyuta">${B.rateLine(d.rate, ` <span class="muted">· hisob: ${B.CURRENCIES[u.currency].label.toLowerCase()}</span>`)}</a>
 
       ${roadCard(d.onboarding)}
-
-      <section class="card income-row">
-        <span class="h-ico green">${ic('wallet')}</span>
-        <div class="ir-main">${incomeLine(u)}</div>
-        <button class="btn sm ${u.income_type ? 'ghost' : ''}" id="setup-btn">${u.income_type ? ic('edit') : 'Sozlash'}</button>
-      </section>
 
       ${needSave > 0 ? `
       <section class="card nudge">
         <span class="n-ico">${ic('coins')}</span>
-        <div style="flex:1"><p>Bu oy o'zingizga yana <b>${som(needSave)}</b> to'lashingiz kerak (${m.save_percent}%).</p>
-          <button class="btn sm mt" id="save-btn">Zaxiraga o'tkazish</button></div>
+        <div style="flex:1"><p>O'zingizga to'lang: <b>${som(needSave)}</b></p>
+          <button class="btn sm mt" id="save-btn">Jamg'armaga o'tkazish</button></div>
       </section>` : ''}
 
       <section class="grid2">
@@ -117,12 +96,6 @@
 
       ${task}
 
-      <a href="/kalkulyator/" class="card tool-link">
-        <span class="h-ico blue">${ic('calc')}</span>
-        <span class="t-main"><b>Kalkulyatorlar</b><small>Kredit, qarzdan chiqish, narxlar va pul qadri</small></span>
-        ${ic('right')}
-      </a>
-
       <section class="card">
         <div class="card-title"><h3>Yutuqlarim</h3><span class="chip gold">${d.badges.filter((b) => b.earned).length}/${d.badges.length}</span></div>
         <div class="badges">
@@ -131,7 +104,8 @@
       </section>`);
 
     page.querySelector('#exp-btn').onclick = () => B.expenseSheet(main);
-    page.querySelector('#setup-btn').onclick = () => B.incomeSetupSheet(u, main);
+    const setupBtn = page.querySelector('#setup-btn');
+    if (setupBtn) setupBtn.onclick = () => B.incomeSetupSheet(u, main);
     const saveBtn = page.querySelector('#save-btn');
     if (saveBtn) saveBtn.onclick = () => B.saveSheet(needSave, null, 0, main);
 

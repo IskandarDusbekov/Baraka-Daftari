@@ -171,6 +171,7 @@ class Expense(models.Model):
         ("phone", "Aloqa / internet"),
         ("events", "To'y-marosim"),
         ("charity", "Sadaqa / ehson"),
+        ("shopping", "Xaridlar"),  # mayda xaridlar: ichimlik, shirinlik, uy-ro'zg'or buyumlari
         ("other", "Boshqalar"),
     ]
 

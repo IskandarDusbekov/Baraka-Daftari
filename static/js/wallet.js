@@ -14,18 +14,9 @@
   const lastDayOf = (key) => { const [y, m] = key.split('-').map(Number); return `${key}-${B.pad(new Date(y, m, 0).getDate())}`; };
   const dayLabel = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${d}-${MONTHS[m - 1].toLowerCase()}`; };
 
-  function incomeSettings(t) {
-    if (t.income_type === 'salary' && t.monthly_income) {
-      return `<b>Oylik: ${som(t.monthly_income)}</b><span>O'zingizga ${t.save_percent}% — ${som(Math.floor((t.monthly_income * t.save_percent) / 100))} / oy</span>`;
-    }
-    if (t.income_type === 'irregular') {
-      return `<b>Oylik olmayman</b><span>Har bir kirimdan ${t.save_percent}% o'zingizga</span>`;
-    }
-    return '<b>Daromad sozlanmagan</b><span>Oylik bormi yo\'qmi va necha foiz to\'lashingizni tanlang</span>';
-  }
-
   async function main() {
-    const [w, me] = await Promise.all([api(`wallet?month=${month}`), api('me')]);
+    // 'me' — hisob valyutasi har doim serverdagidek bo'lishi uchun (api() uni o'zi sinxronlaydi)
+    const [w] = await Promise.all([api(`wallet?month=${month}`), api('me')]);
     const t = w.totals;
     const p = t.save_percent;
     const isCurrent = month === B.monthKey();
@@ -50,28 +41,20 @@
       <section class="card" id="xarajat">
         <div class="card-title"><h3><span class="h-ico orange">${ic('receipt')}</span> Xarajat qo'shish</h3></div>
         ${B.expenseFormHtml(defaultDate)}
-        <a class="link small mt" href="/sozlamalar/" style="display:inline-flex;gap:4px">${ic('repeat')} Ijara, kommunal kabi har oylik to'lovlarni avtomatik yozish</a>
       </section>
 
       ${t.should_save ? `
       <section class="card">
-        <div class="card-title"><h3><span class="h-ico green">${ic('safe')}</span> O'zingga to'la (${p}%)</h3><span class="chip">${Math.min(savePct, 999)}%</span></div>
+        <div class="card-title"><h3><span class="h-ico green">${ic('safe')}</span> O'zingizga to'lash · ${p}%</h3><span class="chip">${Math.min(savePct, 999)}%</span></div>
         <div class="progress"><i data-w="${savePct}"></i></div>
-        <p class="muted small mt">Bu oy: <b>${som(t.saved)}</b> / ${som(t.should_save)} zaxiraga o'tkazildi${t.income_is_planned ? ' (oylik bo\'yicha)' : ''}</p>
+        <p class="muted small mt">${som(t.saved)} / ${som(t.should_save)}</p>
         ${t.saved < t.should_save
-          ? `<button class="btn sm mt" id="save-rest">Qolgan ${som(t.should_save - t.saved)} ni o'tkazish</button>`
-          : `<p class="chip mt">${ic('check')} Bu oy o'zingizga to'ladingiz!</p>`}
+          ? `<button class="btn sm mt" id="save-rest">${som(t.should_save - t.saved)} ni o'tkazish</button>`
+          : `<p class="chip mt">${ic('check')} Bu oy to'landi</p>`}
       </section>` : ''}
 
-      <section class="card income-row">
-        <span class="h-ico green">${ic('wallet')}</span>
-        <div class="ir-main">${incomeSettings(t)}</div>
-        <button class="btn sm ${t.income_type ? 'ghost' : ''}" id="setup-btn">${t.income_type ? ic('edit') : 'Sozlash'}</button>
-      </section>
-
       <section class="card" id="kirim">
-        <div class="card-title"><h3><span class="h-ico blue">${ic('up')}</span> Kirim yozish</h3><span class="chip blue">${p}% kalkulyator</span></div>
-        <p class="muted small" style="margin:-4px 0 10px">Maosh yoki boshqa pul tushganda yozing${t.income_type === 'salary' ? ' (ixtiyoriy — oylik summangiz allaqachon hisobda)' : ''}.</p>
+        <div class="card-title"><h3><span class="h-ico blue">${ic('up')}</span> Kirim yozish</h3></div>
         <label class="field money"><input class="input" id="inc-amt" inputmode="numeric" placeholder="${B.ph('big')}" autocomplete="off"></label>
         <div class="calc-result" id="inc-calc" hidden>
           <div><span>O'zingizga (${p}%)</span><b id="inc-self">0</b></div>
@@ -121,7 +104,6 @@
     });
 
     B.bindExpenseForm(page.querySelector('#xarajat'), main);
-    page.querySelector('#setup-btn').onclick = () => B.incomeSetupSheet(me.user, main);
     const saveRest = page.querySelector('#save-rest');
     if (saveRest) saveRest.onclick = () => B.saveSheet(t.should_save - t.saved, null, 0, main);
 
@@ -248,21 +230,15 @@
   function needsCard(n) {
     const marked = n.zarur + n.kerak + n.havas;
     if (!marked) {
-      return `<section class="card">
-        <div class="card-title"><h3><span class="h-ico orange">${ic('target')}</span> Zarur · Kerak · Havas</h3></div>
-        <p class="muted small">Xarajat yozayotganda uni <b>Zarur</b>, <b>Kerak</b> yoki <b>Havas</b> deb belgilang —
-          bir haftada "xurjun teshigi"dan qancha pul chiqib ketayotganini ko'rasiz.</p>
-      </section>`;
+      return '';
     }
     const pct = (v) => Math.round((v * 100) / marked);
     return `<section class="card">
       <div class="card-title"><h3><span class="h-ico orange">${ic('target')}</span> Zarur · Kerak · Havas</h3></div>
       <div class="need-bar">${Object.entries(B.NEEDS).map(([k, x]) => (n[k] ? `<i style="width:${pct(n[k])}%;background:${x.color}"></i>` : '')).join('')}</div>
       <div class="rule-lines">${Object.entries(B.NEEDS).map(([k, x]) => `
-        <div><span class="dot" style="background:${x.color}"></span>${x.label} <span class="muted small">(${x.hint})</span><b>${som(n[k])} · ${pct(n[k])}%</b></div>`).join('')}
+        <div><span class="dot" style="background:${x.color}"></span>${x.label}<b>${som(n[k])} · ${pct(n[k])}%</b></div>`).join('')}
       </div>
-      ${n.havas ? `<p class="tip">${ic('bulb')} Bu oy havasga <b>${som(n.havas)}</b> ketdi. Havasga chek qo'ying, lekin uni o'ldirmang.</p>` : ''}
-      ${n.unmarked ? `<p class="muted small mt">Belgilanmagan xarajatlar: ${som(n.unmarked)}</p>` : ''}
     </section>`;
   }
 
