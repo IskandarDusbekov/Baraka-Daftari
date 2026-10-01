@@ -16,7 +16,7 @@
     <option value="no_income" {% if status == 'no_income' %}selected{% endif %}>Daromadni sozlamagan</option>
     <option value="rated" {% if status == 'rated' %}selected{% endif %}>Baho qoldirgan</option>
     <option value="blocked" {% if status == 'blocked' %}selected{% endif %}>Botni bloklagan</option>
-    <option value="disabled" {% if status == 'disabled' %}selected{% endif %}>O'chirilgan</option>
+    <option value="disabled" {% if status == 'disabled' %}selected{% endif %}>Bloklangan</option>
   </select>
   <select name="currency">
     <option value="">Barcha valyuta</option>
@@ -47,7 +47,7 @@
         <td class="r">{{ u.lessons_done|default:0 }}</td>
         <td>{% if u.rating %}<span class="stars sm">{{ u.rating }} ★</span>{% else %}<span class="p-muted">—</span>{% endif %}</td>
         <td>
-          {% if not u.is_active %}<span class="tag red">o'chirilgan</span>{% endif %}
+          {% if not u.is_active %}<span class="tag red">bloklangan</span>{% endif %}
           {% if u.bot_blocked %}<span class="tag orange">bot bloklangan</span>{% elif u.bot_started %}<span class="tag green">bot</span>{% endif %}
         </td>
       </tr>

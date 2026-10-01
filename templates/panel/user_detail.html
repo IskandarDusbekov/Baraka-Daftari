@@ -4,7 +4,7 @@
 <header class="p-head">
   <div>
     <a class="p-back" href="{% url 'panel:users' %}">← Foydalanuvchilar</a>
-    <h1>{{ u.display_name }} {% if not u.is_active %}<span class="tag red">o'chirilgan</span>{% endif %}</h1>
+    <h1>{{ u.display_name }} {% if not u.is_active %}<span class="tag red">bloklangan</span>{% endif %}</h1>
     <p class="p-muted">{% if u.username %}@{{ u.username }} · {% endif %}Telegram ID <span class="mono">{{ u.tg_id }}</span> · hisob valyutasi: <b>{{ u.get_currency_display }}</b></p>
     <p class="p-muted small">UUID <span class="mono">{{ u.uid }}</span></p>
   </div>
@@ -17,12 +17,13 @@
           data-confirm-title="Sessiyalarni yopish" data-confirm-ok="Ha, yopish">{% csrf_token %}
       <input type="hidden" name="action" value="logout_all">
       <button class="p-btn ghost">Sessiyalarni yopish</button></form>
+    {% if request.user.is_superuser %}<a class="p-btn ghost" href="{% url 'panel:admins' %}?from={{ u.uid }}#yangi">Admin qilish</a>{% endif %}
     <form method="post" action="{% url 'panel:user_action' u.uid %}"
-          data-confirm="{% if u.is_active %}Foydalanuvchi ilovaga kira olmaydi, ochiq sessiyalari darhol yopiladi. Ma'lumotlari o'chmaydi — keyin qayta yoqish mumkin.{% else %}Foydalanuvchi yana ilovadan foydalana oladi.{% endif %}"
-          data-confirm-title="{% if u.is_active %}Hisobni o'chirish{% else %}Hisobni yoqish{% endif %}"
-          data-confirm-ok="{% if u.is_active %}Ha, o'chirish{% else %}Ha, yoqish{% endif %}" {% if u.is_active %}data-danger{% endif %}>{% csrf_token %}
+          data-confirm="{% if u.is_active %}Foydalanuvchi ilovaga va botga kira olmaydi, ochiq sessiyalari darhol yopiladi. Ma'lumotlari o'chmaydi — istalgan payt blokdan chiqarish mumkin.{% else %}Foydalanuvchi yana ilovadan foydalana oladi.{% endif %}"
+          data-confirm-title="{% if u.is_active %}Bloklash{% else %}Blokdan chiqarish{% endif %}"
+          data-confirm-ok="{% if u.is_active %}Ha, bloklash{% else %}Ha, chiqarish{% endif %}" {% if u.is_active %}data-danger{% endif %}>{% csrf_token %}
       <input type="hidden" name="action" value="toggle_active">
-      <button class="p-btn {% if u.is_active %}danger{% endif %}">{% if u.is_active %}Hisobni o'chirish{% else %}Hisobni yoqish{% endif %}</button></form>
+      <button class="p-btn {% if u.is_active %}danger{% endif %}">{% if u.is_active %}Bloklash{% else %}Blokdan chiqarish{% endif %}</button></form>
   </div>
 </header>
 

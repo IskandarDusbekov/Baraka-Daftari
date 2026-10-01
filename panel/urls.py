@@ -25,6 +25,10 @@ urlpatterns = [
     path("baholar/oqildi/", views.feedback_read, name="feedback_read"),
     path("seo/", views.seo_settings, name="seo"),
     path("sozlamalar/", views.site_settings, name="settings"),
+    path("adminlar/", views.admins, name="admins"),
+    path("adminlar/<int:pk>/amal/", views.admin_action, name="admin_action"),
+    path("zaxira/", views.backups, name="backups"),
+    path("zaxira/yuklab-olish/<str:name>", views.backup_download, name="backup_download"),
     path("seo/fayl/<int:pk>/ochirish/", views.seo_file_delete, name="seo_file_delete"),
     path("xabarlar/", views.broadcasts, name="broadcasts"),
 ]

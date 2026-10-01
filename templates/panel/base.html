@@ -26,6 +26,10 @@
       <a href="{% url 'panel:feedback' %}" class="{% if nav == 'feedback' %}on{% endif %}"><svg class="ic"><use href="#i-star"/></svg>Baholar</a>
       <a href="{% url 'panel:seo' %}" class="{% if nav == 'seo' %}on{% endif %}"><svg class="ic"><use href="#i-search"/></svg>SEO</a>
       <a href="{% url 'panel:settings' %}" class="{% if nav == 'settings' %}on{% endif %}"><svg class="ic"><use href="#i-gear"/></svg>Sozlamalar</a>
+      {% if request.user.is_superuser %}
+      <a href="{% url 'panel:admins' %}" class="{% if nav == 'admins' %}on{% endif %}"><svg class="ic"><use href="#i-shield"/></svg>Adminlar</a>
+      <a href="{% url 'panel:backups' %}" class="{% if nav == 'backups' %}on{% endif %}"><svg class="ic"><use href="#i-safe"/></svg>Zaxira nusxa</a>
+      {% endif %}
       {% if request.user.is_superuser %}<a href="{% url 'admin:index' %}" class="muted-link"><svg class="ic"><use href="#i-file"/></svg>Ma'lumotlar bazasi</a>{% endif %}
     </nav>
     <div class="p-me">

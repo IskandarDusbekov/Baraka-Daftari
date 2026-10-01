@@ -1,0 +1,51 @@
+{% extends "panel/base.html" %}
+{% block title %}Zaxira nusxa{% endblock %}
+{% block content %}
+<header class="p-head"><h1>Zaxira nusxa</h1>
+  <form method="post"
+        data-confirm="Bazaning hozirgi holatidan nusxa olinadi. Bir necha soniya ketishi mumkin." data-confirm-title="Zaxira nusxa olish" data-confirm-ok="Nusxa olish">
+    {% csrf_token %}<input type="hidden" name="action" value="create">
+    <button class="p-btn">Hozir nusxa olish</button>
+  </form>
+</header>
+
+<section class="p-card">
+  <ul class="p-list">
+    <li>Nusxada <b>barcha ma'lumotlar</b> bor: foydalanuvchilar, xarajatlar, qarzlar, saboqlar. Faylni hech kimga bermang va xavfsiz joyda saqlang.</li>
+    <li>Bu yerda oxirgi <b>{{ keep }} ta</b> nusxa saqlanadi, eskilari o'zi o'chadi. Serverda alohida <b>har kecha soat 3:30 da</b> avtomatik zaxira olinadi (14 kun saqlanadi).</li>
+    <li>Baza turi: <b>{{ engine }}</b>.</li>
+  </ul>
+</section>
+
+<section class="p-card flush">
+  <table class="p-table">
+    <thead><tr><th>Fayl</th><th>Sana</th><th class="r">Hajmi</th><th class="r"></th></tr></thead>
+    <tbody>
+    {% for b in items %}
+      <tr>
+        <td class="mono">{{ b.name }}</td>
+        <td class="nowrap">{{ b.created|date:"d.m.Y H:i" }}</td>
+        <td class="r nowrap">{{ b.size|filesizeformat }}</td>
+        <td class="r nowrap">
+          <a class="p-btn sm" href="{% url 'panel:backup_download' b.name %}">Yuklab olish</a>
+          <form method="post" class="inline" data-confirm="{{ b.name }} butunlay o'chiriladi." data-confirm-title="Nusxani o'chirish" data-confirm-ok="O'chirish" data-danger>
+            {% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="name" value="{{ b.name }}">
+            <button class="p-btn ghost sm">O'chirish</button></form>
+        </td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4" class="p-muted">Hali nusxa olinmagan — «Hozir nusxa olish» ni bosing.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="p-card">
+  <div class="p-card-head"><h2>Nusxadan tiklash (serverda)</h2></div>
+  <p class="p-muted small">Tiklash bazadagi hozirgi ma'lumotlarni almashtiradi, shuning uchun u faqat serverda, qo'lda bajariladi:</p>
+  <pre class="code">cd /srv/baraka && systemctl stop baraka-web baraka-bot
+set -a && . ./.env && set +a
+PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -h 127.0.0.1 -U baraka -d baraka --clean --if-exists --no-owner backups/FAYL_NOMI.dump
+systemctl start baraka-web baraka-bot</pre>
+</section>
+{% endblock %}

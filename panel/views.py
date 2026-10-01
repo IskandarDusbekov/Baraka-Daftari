@@ -8,6 +8,7 @@ import datetime as dt
 import logging
 import uuid
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import views as auth_views
@@ -28,7 +29,10 @@ from core.models import (
     SeoSettings, SiteSettings, TgUser, VerificationFile, total_of,
 )
 
-from .forms import BroadcastForm, LessonForm, MessageForm, SeoForm, SiteSettingsForm, VerificationUploadForm
+from .forms import (
+    AdminCreateForm, BroadcastForm, LessonForm, MessageForm, PasswordSetForm, SeoForm, SiteSettingsForm,
+    VerificationUploadForm,
+)
 
 LOGIN_URL = "/boshqaruv/kirish/"
 security_log = logging.getLogger("security")
@@ -330,7 +334,7 @@ def user_action(request, uid):
         u.is_active = not u.is_active
         u.token_version += 1  # o'chirilganda ochiq sessiyalar ham darhol yopiladi
         u.save(update_fields=["is_active", "token_version"])
-        messages.success(request, "Hisob yoqildi" if u.is_active else "Hisob o'chirildi — foydalanuvchi kira olmaydi")
+        messages.success(request, "Blokdan chiqarildi" if u.is_active else "Bloklandi — ilovaga ham, botga ham kira olmaydi")
     elif action == "logout_all":
         u.token_version += 1
         u.save(update_fields=["token_version"])
@@ -562,6 +566,133 @@ def site_settings(request):
         messages.success(request, "Sozlamalar saqlandi — «Loyiha haqida» sahifasida darhol ko'rinadi")
         return redirect("panel:settings")
     return render(request, "panel/settings.html", {"nav": "settings", "form": form})
+
+
+# ---------------------------------------------------------------- adminlar (faqat bosh admin)
+
+def superuser(view):
+    """Faqat bosh admin (superuser): adminlarni boshqarish, zaxira nusxa, eksport."""
+    @staff
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_superuser:
+            return HttpResponseForbidden("Bu bo'lim faqat bosh admin uchun")
+        return view(request, *args, **kwargs)
+    wrapper.__name__ = view.__name__
+    return wrapper
+
+
+@superuser
+def admins(request):
+    from django.contrib.auth.models import User
+
+    initial = {}
+    tg_uid = request.GET.get("from")
+    if tg_uid:
+        try:
+            tg = TgUser.objects.filter(uid=uuid.UUID(tg_uid)).first()
+        except ValueError:
+            tg = None
+        if tg:
+            initial = {"username": tg.username or f"tg{tg.tg_id}", "first_name": tg.first_name}
+    form = AdminCreateForm(request.POST or None, initial=initial)
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        user = User.objects.create_user(d["username"], password=d["password1"], first_name=d["first_name"])
+        user.is_staff = True
+        user.is_superuser = d["role"] == "superuser"
+        user.save()
+        audit(request, "admin_create", username=user.username, role=d["role"])
+        messages.success(request, f"«{user.username}» admin qilindi. U /boshqaruv/kirish/ orqali shu login va parol bilan kiradi.")
+        return redirect("panel:admins")
+    items = User.objects.filter(is_staff=True).order_by("-is_superuser", "username")
+    return render(request, "panel/admins.html", {"nav": "admins", "items": items, "form": form,
+                                                  "password_form": PasswordSetForm()})
+
+
+@superuser
+@require_POST
+def admin_action(request, pk):
+    from django.contrib.auth.models import User
+
+    target = get_object_or_404(User, pk=pk, is_staff=True)
+    action = request.POST.get("action")
+    is_self = target.pk == request.user.pk
+    last_super = target.is_superuser and User.objects.filter(is_superuser=True, is_active=True).count() <= 1
+    if is_self and action in ("toggle_active", "make_staff", "remove"):
+        messages.error(request, "O'zingizni bloklay yoki huquqingizni olib tashlay olmaysiz")
+        return redirect("panel:admins")
+    if last_super and action in ("toggle_active", "make_staff", "remove"):
+        messages.error(request, "Kamida bitta faol bosh admin qolishi kerak")
+        return redirect("panel:admins")
+
+    if action == "toggle_active":
+        target.is_active = not target.is_active
+        target.save(update_fields=["is_active"])
+        messages.success(request, f"«{target.username}» " + ("blokdan chiqarildi" if target.is_active else "bloklandi — panelga kira olmaydi"))
+    elif action == "make_super":
+        target.is_superuser = True
+        target.save(update_fields=["is_superuser"])
+        messages.success(request, f"«{target.username}» bosh admin qilindi")
+    elif action == "make_staff":
+        target.is_superuser = False
+        target.save(update_fields=["is_superuser"])
+        messages.success(request, f"«{target.username}» oddiy admin qilindi")
+    elif action == "remove":
+        target.is_staff = target.is_superuser = False
+        target.save(update_fields=["is_staff", "is_superuser"])
+        messages.success(request, f"«{target.username}» adminlikdan olindi")
+    elif action == "password":
+        form = PasswordSetForm(request.POST, user=target)
+        if not form.is_valid():
+            messages.error(request, " ".join(e for errs in form.errors.values() for e in errs))
+            return redirect("panel:admins")
+        target.set_password(form.cleaned_data["password1"])
+        target.save(update_fields=["password"])
+        messages.success(request, f"«{target.username}» paroli o'zgartirildi")
+    audit(request, f"admin_{action}", username=target.username)
+    return redirect("panel:admins")
+
+
+# ---------------------------------------------------------------- zaxira nusxa (faqat bosh admin)
+
+@superuser
+def backups(request):
+    from core import backup
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "create":
+            try:
+                name = backup.create_backup()
+                audit(request, "backup_create", name=name)
+                messages.success(request, f"Zaxira nusxa tayyor: {name}")
+            except backup.BackupError as e:
+                messages.error(request, str(e))
+        elif action == "delete":
+            name = request.POST.get("name", "")
+            if backup.delete_backup(name):
+                audit(request, "backup_delete", name=name)
+                messages.success(request, f"{name} o'chirildi")
+        return redirect("panel:backups")
+    return render(request, "panel/backups.html", {
+        "nav": "backups", "items": backup.list_backups(), "keep": backup.KEEP,
+        "engine": "PostgreSQL" if "postgresql" in settings.DATABASES["default"]["ENGINE"] else "SQLite",
+    })
+
+
+@superuser
+def backup_download(request, name):
+    from django.http import FileResponse, Http404
+
+    from core import backup
+
+    path = backup.path_of(name)
+    if not path:
+        raise Http404
+    audit(request, "backup_download", name=name)
+    response = FileResponse(open(path, "rb"), as_attachment=True, filename=name, content_type="application/octet-stream")
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 @staff

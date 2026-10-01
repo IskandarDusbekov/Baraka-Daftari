@@ -224,3 +224,6 @@ __marimo__/
 
 # Serverga yuklash arxivi
 *.tar.gz
+
+# Admin paneldan olingan zaxira nusxalar (shaxsiy ma'lumot!)
+backups/

@@ -116,6 +116,9 @@ if not DEBUG:
 
 LOGIN_URL = "/boshqaruv/kirish/"
 
+# Admin panel → Zaxira nusxa: qo'lda olingan nusxalar papkasi (git'ga va nginx'ga kirmaydi)
+BACKUP_DIR = os.getenv("BACKUP_DIR", str(BASE_DIR / "backups"))
+
 # Django admin manzili: productionda taxmin qilib bo'lmaydigan yo'l qo'ying (ADMIN_URL=maxfiy-yol-7f3k/)
 ADMIN_URL = os.getenv("ADMIN_URL", "admin/").strip("/") + "/"
 

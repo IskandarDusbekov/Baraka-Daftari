@@ -12,6 +12,8 @@ from .telegram import TelegramError
 
 log = logging.getLogger("bot")
 
+BLOCKED_TEXT = "⛔️ Hisobingiz vaqtincha bloklangan. Savol bo'lsa, sayt orqali biz bilan bog'laning."
+
 COMMANDS = {
     "/qoldi": "left", "/hafta": "week", "/daromad": "income", "/jamgarma": "savings",
     "/qarz": "debts", "/kurs": "rate", "/bugun": "lesson", "/eslatma": "notify",
@@ -46,6 +48,11 @@ def handle_message(api, msg):
     if chat.get("type") != "private" or "from" not in msg:
         return
     user = _user_for(msg["from"])
+    if not user.is_active:
+        # Bloklangan foydalanuvchi: botda ham hech narsa qila olmaydi (spamga javob bermaslik uchun soatiga bir marta)
+        if activity.allow(f"bot-blocked:{user.pk}", 1, 3600):
+            api.send(user.tg_id, BLOCKED_TEXT)
+        return
     text = (msg.get("text") or "").strip()
     command, _, arg = text.partition(" ")
     command = command.split("@")[0].lower()
@@ -100,7 +107,9 @@ def handle_callback(api, cq):
     data = cq.get("data") or ""
     user = _user_for(cq["from"])
     answer = ""
-    if data.startswith("login:"):
+    if not user.is_active:
+        answer = "Hisobingiz bloklangan"
+    elif data.startswith("login:"):
         answer = confirm_login(api, user, data.split(":", 1)[1], cq.get("message"))
     elif data.startswith("r:") and data[2:] in reports.REPORTS and cq.get("message"):
         answer = refresh_report(api, user, data[2:], cq["message"])

@@ -12,7 +12,7 @@
 
   const MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
   const DISCLAIMER = "Ushbu loyiha Abdukarim Mirzayevning «Baraka Daftari» ko'rsatuvidan ilhomlangan holda, " +
-    'insonlarga qulaylik yaratish maqsadida ishlab chiqildi.';
+    'insonlarga qulaylik yaratish maqsadida ishlab chiqildi. Bu rasmiy loyiha emas.';
 
   // ------------------------------------------------------------------ utils
   const store = {

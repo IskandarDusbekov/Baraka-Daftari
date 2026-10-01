@@ -1104,3 +1104,72 @@ class ReportTests(ApiTestCase):
     def test_pages(self):
         self.assertContains(self.client.get("/hisobot/"), "report.js")
         self.assertContains(self.client.get("/aloqa/"), "contact.js")
+
+
+class AdminsAndBackupTests(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        from django.contrib.auth.models import User
+        self.boss = User.objects.create_user("boss", password="Kuchli-parol-2026", is_staff=True, is_superuser=True)
+        self.helper = User.objects.create_user("yordamchi", password="Kuchli-parol-2026", is_staff=True)
+        self.tmp = tempfile.mkdtemp()
+        self.override = override_settings(BACKUP_DIR=self.tmp)
+        self.override.enable()
+        self.addCleanup(self.override.disable)
+
+    def test_only_superuser(self):
+        self.client.login(username="yordamchi", password="Kuchli-parol-2026")
+        for url in ("/boshqaruv/adminlar/", "/boshqaruv/zaxira/"):
+            self.assertEqual(self.client.get(url).status_code, 403, url)
+
+    def test_create_admin_block_and_rules(self):
+        from django.contrib.auth.models import User
+        self.client.login(username="boss", password="Kuchli-parol-2026")
+        self.assertEqual(self.client.get("/boshqaruv/adminlar/").status_code, 200)
+        r = self.client.post("/boshqaruv/adminlar/", {"username": "yangi_admin", "role": "staff",
+                                                      "password1": "Juda-Kuchli-77", "password2": "Juda-Kuchli-77"})
+        self.assertEqual(r.status_code, 302)
+        new = User.objects.get(username="yangi_admin")
+        self.assertTrue(new.is_staff and not new.is_superuser and new.check_password("Juda-Kuchli-77"))
+        # zaif parol qabul qilinmaydi
+        self.client.post("/boshqaruv/adminlar/", {"username": "zaif", "role": "staff", "password1": "12345", "password2": "12345"})
+        self.assertFalse(User.objects.filter(username="zaif").exists())
+        # bloklash
+        self.client.post(f"/boshqaruv/adminlar/{new.pk}/amal/", {"action": "toggle_active"})
+        new.refresh_from_db()
+        self.assertFalse(new.is_active)
+        # o'zini bloklay olmaydi
+        self.client.post(f"/boshqaruv/adminlar/{self.boss.pk}/amal/", {"action": "toggle_active"})
+        self.boss.refresh_from_db()
+        self.assertTrue(self.boss.is_active)
+
+    def test_backup_create_download_delete(self):
+        self.client.login(username="boss", password="Kuchli-parol-2026")
+        self.client.post("/boshqaruv/zaxira/", {"action": "create"})
+        from core import backup
+        items = backup.list_backups()
+        self.assertEqual(len(items), 1)
+        name = items[0]["name"]
+        r = self.client.get(f"/boshqaruv/zaxira/yuklab-olish/{name}")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("attachment", r["Content-Disposition"])
+        r.close()
+        # begona fayl nomi ruxsat etilmaydi
+        self.assertEqual(self.client.get("/boshqaruv/zaxira/yuklab-olish/..%2F.env").status_code, 404)
+        self.client.post("/boshqaruv/zaxira/", {"action": "delete", "name": name})
+        self.assertEqual(backup.list_backups(), [])
+
+    def test_blocked_user_cannot_use_bot(self):
+        api = mock.Mock()
+        TgUser.objects.create(tg_id=777, first_name="X", is_active=False, bot_started=True)
+        handlers.handle_update(api, {"message": {"chat": {"type": "private", "id": 777},
+                                                 "from": {"id": 777, "first_name": "X"}, "text": "50000 non"}})
+        self.assertIn("bloklangan", api.send.call_args[0][1])
+        self.assertFalse(TgUser.objects.get(tg_id=777).expenses.exists())
+
+    def test_django_admin_pages(self):
+        self.client.login(username="boss", password="Kuchli-parol-2026")
+        TgUser.objects.create(tg_id=888, first_name="Y")
+        for url in ("/admin/", "/admin/core/tguser/", "/admin/core/expense/", "/admin/core/feedback/"):
+            self.assertEqual(self.client.get(url).status_code, 200, url)

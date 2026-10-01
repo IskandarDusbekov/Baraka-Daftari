@@ -55,6 +55,8 @@ main > section { max-width: 1080px; margin: 0 auto; padding: 72px 20px; }
 .btn-line { border: 2px solid var(--ink); color: var(--ink); background: transparent; }
 .btn-line:hover { background: rgba(29, 42, 34, .06); }
 .fine { margin-top: 14px; font-size: 14px; color: var(--ink-soft); }
+.fine.unofficial { margin-top: 6px; font-size: 13px; font-style: italic; }
+.unofficial-note { margin-top: 14px; max-width: 820px; font-size: 15px; line-height: 1.6; color: var(--ink-soft); }
 
 /* ---------- hero ---------- */
 .hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; padding-top: 40px !important; }

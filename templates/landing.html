@@ -64,10 +64,11 @@
       <p class="lead">Bu savolga javob — daftarda. Xarajatni yozasiz, avval o'zingizga to'laysiz,
         qarzdan reja bilan chiqasiz. Hammasi telefoningizda, Telegram ichida.</p>
       <div class="cta">
-        {% if bot_username %}<a class="btn-ink" href="{{ bot_link }}" rel="noopener"><svg class="ic"><use href="#i-send"/></svg> Telegram'da boshlash</a>{% endif %}
-        <a class="{% if bot_username %}btn-line{% else %}btn-ink{% endif %}" href="/kirish/">Saytda ochish</a>
+        <a class="btn-ink" href="/kirish/">Kirish / Ro'yxatdan o'tish</a>
+        <a class="btn-line" href="/kalkulyator/">Kredit kalkulyatori</a>
       </div>
-      <p class="fine">Bepul · Reklamasiz · Ro'yxatdan o'tish Telegram orqali, parolsiz</p>
+      <p class="fine">Bepul · Reklamasiz · Parolsiz, Telegram orqali tasdiqlanadi</p>
+      <p class="fine unofficial">Mustaqil loyiha — Abdukarim Mirzayevning rasmiy loyihasi emas.</p>
     </div>
 
     <figure class="notebook" aria-label="Daftar sahifasi namunasi">
@@ -193,19 +194,19 @@
       <h2>Uch qadam</h2>
     </div>
     <ol class="steps-hand">
-      <li><b>Botni oching.</b> Telegram'da START ni bosasiz — ro'yxatdan o'tish shu.</li>
+      <li><b>Ro'yxatdan o'ting.</b> «Kirish» ni bosing va Telegram'da bir bosishda tasdiqlang — parol kerak emas.</li>
       <li><b>Oylik va foizni belgilang.</b> Oylik olasizmi, yo'qmi — va daromadning necha foizini o'zingizga to'laysiz.</li>
       <li><b>Kuniga bir daqiqa.</b> Xarajatni yozing. Kechqurun bot eslatib turadi.</li>
     </ol>
     <div class="cta center">
-      {% if bot_username %}<a class="btn-ink" href="{{ bot_link }}" rel="noopener"><svg class="ic"><use href="#i-send"/></svg> Telegram'da boshlash</a>{% endif %}
-      <a class="{% if bot_username %}btn-line{% else %}btn-ink{% endif %}" href="/kirish/">Saytda ochish</a>
+      <a class="btn-ink" href="/kirish/">Kirish / Ro'yxatdan o'tish</a>
     </div>
   </section>
 
   <!-- FAQ -->
   <section class="faq" id="savollar">
     <div class="sec-head"><p class="hand">Ko'p so'raladi</p><h2>Savollar</h2></div>
+    <details><summary>Bu Abdukarim Mirzayevning rasmiy loyihasimi?</summary><p>Yo'q. Bu mustaqil, notijorat loyiha: «Baraka Daftari» ko'rsatuvining oddiy ixlosmandi tomonidan, saboqlarni amalda qo'llashni osonlashtirish uchun yaratilgan. Abdukarim Mirzayev yoki uning jamoasi bilan rasmiy bog'liq emas. Asl saboqlarni uning o'z sahifalaridan kuzating.</p></details>
     <details><summary>Bu pullikmi?</summary><p>Yo'q. Daftar bepul va reklamasiz.</p></details>
     <details><summary>Bu tez boyish usulimi?</summary><p>Yo'q. Bu tez boyish usuli emas — boylikning ilmi. Natija intizomdan keladi: yozish, avval o'zingizga to'lash, qarzdan reja bilan chiqish.</p></details>
     <details><summary>Bu diniy fatvomi?</summary><p>Yo'q. Loyiha ta'limiy xarakterga ega, diniy fatvo emas.</p></details>
@@ -217,6 +218,8 @@
   <!-- DISCLAIMER -->
   <section class="l-disclaimer">
     <p class="caps">Ushbu loyiha Abdukarim Mirzayevning «Baraka Daftari» ko'rsatuvidan ilhomlangan holda, insonlarga qulaylik yaratish maqsadida ishlab chiqildi.</p>
+    <p class="unofficial-note">Bu rasmiy loyiha emas: Abdukarim Mirzayev yoki uning jamoasi tomonidan yaratilmagan va ular bilan bog'liq emas.
+      Loyiha bepul va notijorat. Ko'rsatuv nomi, video va saboqlar mualliflari — ularning egalariga tegishli.</p>
     <ul class="principles-line">
       <li>Tez boyish usuli emas</li><li>Boylikning ilmi</li><li>Diniy fatvo emas</li><li>Ta'limiy asar</li>
     </ul>

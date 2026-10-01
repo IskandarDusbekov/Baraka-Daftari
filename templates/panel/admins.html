@@ -1,0 +1,75 @@
+{% extends "panel/base.html" %}
+{% block title %}Adminlar{% endblock %}
+{% block content %}
+<header class="p-head"><h1>Adminlar</h1></header>
+
+<section class="p-card">
+  <div class="p-card-head"><h2>Kim nima qila oladi?</h2></div>
+  <ul class="p-list">
+    <li><b>Admin</b> — foydalanuvchilar, saboqlar, xabarlar, baholar, SEO va sozlamalar.</li>
+    <li><b>Bosh admin</b> — bularning hammasi + adminlarni qo'shish/bloklash, zaxira nusxa va CSV eksport.</li>
+    <li>Adminlar <span class="mono">/boshqaruv/kirish/</span> sahifasidan login va parol bilan kiradi.</li>
+  </ul>
+</section>
+
+<section class="p-card flush">
+  <table class="p-table">
+    <thead><tr><th>Login</th><th>Huquqi</th><th>Holati</th><th>Oxirgi kirish</th><th class="r">Amallar</th></tr></thead>
+    <tbody>
+    {% for a in items %}
+      <tr>
+        <td><b>{{ a.username }}</b>{% if a.first_name %}<br><span class="p-muted">{{ a.first_name }}</span>{% endif %}
+          {% if a.pk == request.user.pk %}<span class="tag blue">siz</span>{% endif %}</td>
+        <td>{% if a.is_superuser %}<span class="tag green">Bosh admin</span>{% else %}<span class="tag">Admin</span>{% endif %}</td>
+        <td>{% if a.is_active %}<span class="tag green">faol</span>{% else %}<span class="tag red">bloklangan</span>{% endif %}</td>
+        <td class="p-muted nowrap">{{ a.last_login|date:"d.m.Y H:i"|default:"hali kirmagan" }}</td>
+        <td class="r">
+          <div class="row-actions">
+            {% if a.pk != request.user.pk %}
+            <form method="post" action="{% url 'panel:admin_action' a.pk %}" class="inline"
+                  data-confirm="{% if a.is_active %}«{{ a.username }}» panelga kira olmay qoladi.{% else %}«{{ a.username }}» yana panelga kira oladi.{% endif %}"
+                  data-confirm-title="{% if a.is_active %}Bloklash{% else %}Blokdan chiqarish{% endif %}" data-confirm-ok="Ha" {% if a.is_active %}data-danger{% endif %}>{% csrf_token %}
+              <input type="hidden" name="action" value="toggle_active">
+              <button class="p-btn {% if a.is_active %}danger{% else %}ghost{% endif %} sm">{% if a.is_active %}Bloklash{% else %}Blokdan chiqarish{% endif %}</button></form>
+            <form method="post" action="{% url 'panel:admin_action' a.pk %}" class="inline"
+                  data-confirm="{% if a.is_superuser %}Adminlar va zaxira nusxani boshqara olmay qoladi.{% else %}Adminlarni qo'shish, zaxira nusxa va eksportga ham ruxsat beriladi.{% endif %}"
+                  data-confirm-title="{% if a.is_superuser %}Oddiy admin qilish{% else %}Bosh admin qilish{% endif %}" data-confirm-ok="Ha">{% csrf_token %}
+              <input type="hidden" name="action" value="{% if a.is_superuser %}make_staff{% else %}make_super{% endif %}">
+              <button class="p-btn ghost sm">{% if a.is_superuser %}Oddiy admin qilish{% else %}Bosh admin qilish{% endif %}</button></form>
+            <form method="post" action="{% url 'panel:admin_action' a.pk %}" class="inline"
+                  data-confirm="«{{ a.username }}» endi panelga kira olmaydi. Hisobi o'chmaydi — keyin yana admin qilish mumkin."
+                  data-confirm-title="Adminlikdan olish" data-confirm-ok="Ha, olish" data-danger>{% csrf_token %}
+              <input type="hidden" name="action" value="remove">
+              <button class="p-btn ghost sm">Adminlikdan olish</button></form>
+            {% endif %}
+            <details class="pw-box"><summary class="p-btn ghost sm">Parolni o'zgartirish</summary>
+              <form method="post" action="{% url 'panel:admin_action' a.pk %}" class="p-form">{% csrf_token %}
+                <input type="hidden" name="action" value="password">
+                <input type="password" name="password1" placeholder="Yangi parol (10+ belgi)" autocomplete="new-password" required>
+                <input type="password" name="password2" placeholder="Takrorlang" autocomplete="new-password" required>
+                <button class="p-btn sm">Saqlash</button>
+              </form>
+            </details>
+          </div>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<form method="post" class="p-card p-form wide" id="yangi">
+  {% csrf_token %}
+  <div class="p-card-head"><h2>Yangi admin qo'shish</h2></div>
+  {% if form.non_field_errors %}<p class="p-msg error">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+  <div class="p-grid2 tight">
+    {% for field in form %}
+      <label><span>{{ field.label }}</span>{{ field }}
+        {% if field.help_text %}<small class="p-muted">{{ field.help_text }}</small>{% endif %}
+        {% for e in field.errors %}<small class="err">{{ e }}</small>{% endfor %}</label>
+    {% endfor %}
+  </div>
+  <p class="p-muted small">Parolni xavfsiz yo'l bilan (yuzma-yuz yoki maxfiy xabarda) bering va birinchi kirishdan keyin o'zgartirishni so'rang.</p>
+  <button class="p-btn" type="submit">Admin qilish</button>
+</form>
+{% endblock %}

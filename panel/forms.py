@@ -147,6 +147,65 @@ class SiteSettingsForm(forms.ModelForm):
         return value
 
 
+ROLES = [("staff", "Admin — panelni boshqaradi"), ("superuser", "Bosh admin — adminlar, zaxira va eksport ham")]
+
+
+class AdminCreateForm(forms.Form):
+    username = forms.CharField(label="Login", max_length=150, widget=forms.TextInput(attrs={"autocomplete": "off"}))
+    first_name = forms.CharField(label="Ismi", max_length=150, required=False)
+    role = forms.ChoiceField(label="Huquqi", choices=ROLES, initial="staff")
+    password1 = forms.CharField(label="Parol", widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}),
+                                help_text="Kamida 10 belgi; oddiy so'z yoki faqat raqam bo'lmasin")
+    password2 = forms.CharField(label="Parolni takrorlang", widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}))
+
+    def clean_username(self):
+        from django.contrib.auth.models import User
+
+        value = self.cleaned_data["username"].strip()
+        if not re.fullmatch(r"[\w.@+-]{3,150}", value):
+            raise forms.ValidationError("Login: kamida 3 belgi — harf, raqam va . @ + - _")
+        if User.objects.filter(username__iexact=value).exists():
+            raise forms.ValidationError("Bu login band")
+        return value
+
+    def clean(self):
+        from django.contrib.auth.password_validation import validate_password
+
+        data = super().clean()
+        p1, p2 = data.get("password1"), data.get("password2")
+        if p1 and p1 != p2:
+            self.add_error("password2", "Parollar bir xil emas")
+        elif p1:
+            try:
+                validate_password(p1)
+            except forms.ValidationError as e:
+                self.add_error("password1", e)
+        return data
+
+
+class PasswordSetForm(forms.Form):
+    password1 = forms.CharField(label="Yangi parol", widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}))
+    password2 = forms.CharField(label="Takrorlang", widget=forms.PasswordInput(attrs={"autocomplete": "new-password"}))
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean(self):
+        from django.contrib.auth.password_validation import validate_password
+
+        data = super().clean()
+        p1, p2 = data.get("password1"), data.get("password2")
+        if p1 and p1 != p2:
+            self.add_error("password2", "Parollar bir xil emas")
+        elif p1:
+            try:
+                validate_password(p1, self.user)
+            except forms.ValidationError as e:
+                self.add_error("password1", e)
+        return data
+
+
 def _meta_token(value):
     """To'liq <meta … content="X"> qo'yilsa ham faqat X ni oladi."""
     value = (value or "").strip()

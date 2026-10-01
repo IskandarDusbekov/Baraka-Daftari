@@ -208,6 +208,14 @@ tr.unread td:first-child { box-shadow: inset 3px 0 0 var(--orange); }
 .check-inline { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 14px; }
 .p-filters .check-inline input { flex: none; min-width: 0; width: auto; }
 
+/* adminlar, zaxira */
+.row-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: flex-start; }
+.pw-box summary { list-style: none; cursor: pointer; }
+.pw-box summary::-webkit-details-marker { display: none; }
+.pw-box[open] summary { margin-bottom: 8px; }
+.pw-box .p-form { min-width: 220px; text-align: left; }
+pre.code { background: #1d2a22; color: #d9f2e2; border-radius: 12px; padding: 12px 14px; overflow-x: auto; font-size: 13px; margin: 0; }
+
 /* SEO */
 .checklist { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px 16px; }
 .checklist li { display: grid; grid-template-columns: 14px 1fr; gap: 2px 10px; align-items: center; }
