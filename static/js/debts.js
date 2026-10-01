@@ -36,6 +36,11 @@
       </section>
 
       <button class="add-card" id="add-debt">${ic('plus')} Qarz yoki kredit qo'shish</button>
+      <a href="/kalkulyator/#kredit" class="card tool-link">
+        <span class="h-ico blue">${ic('calc')}</span>
+        <span class="t-main"><b>Olishdan oldin hisoblang</b><small>Kredit va nasiya kalkulyatori — qancha ortiqcha to'laysiz</small></span>
+        ${ic('right')}
+      </a>
 
       ${d.debts.map((x) => debtCard(x, x.id === targetId)).join('')}
 

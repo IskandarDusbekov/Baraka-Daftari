@@ -15,6 +15,7 @@ urlpatterns = [
     path("jamgarma/", views.savings, name="savings"),
     path("sozlamalar/", views.settings_page, name="settings"),
     path("haqida/", views.about, name="about"),
+    path("kalkulyator/", views.calculators, name="calculators"),
     path("kirish/", views.login, name="login"),
     path("api/auth/telegram", api.auth_telegram),
     path("api/auth/login-code", api.auth_login_code),

@@ -4,9 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}Elektron Baraka Daftari{% endblock %}</title>
-  <meta name="description" content="Avval o'zingizga to'lash, xarajatlarni nazorat qilish va qarzdan qutulishni haftalik saboqlar bilan o'rganing.">
+  <meta name="description" content="{% block meta_description %}Avval o'zingizga to'lash, xarajatlarni nazorat qilish va qarzdan qutulishni haftalik saboqlar bilan o'rganing.{% endblock %}">
   <meta name="theme-color" content="#f4f7fb">
-  <meta name="robots" content="{% if active == 'haqida' and seo.allow_indexing %}index, follow{% else %}noindex, nofollow{% endif %}">
+  <meta name="robots" content="{% if active in 'haqida kalkulyator' and active and seo.allow_indexing %}index, follow{% else %}noindex, nofollow{% endif %}">
+  {% if active in 'haqida kalkulyator' and active %}<link rel="canonical" href="{{ seo.canonical }}">{% endif %}
   <link rel="icon" href="{% static 'img/logo.svg' %}" type="image/svg+xml">
   <link rel="apple-touch-icon" href="{% static 'img/logo-640.png' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">

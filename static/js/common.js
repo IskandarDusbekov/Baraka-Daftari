@@ -389,7 +389,8 @@
   const disclaimerHtml = () => `<section class="disclaimer"><div class="d-title">${ic('alert')} Muhim ma'lumot</div>${esc(DISCLAIMER)}</section>`;
 
   /** Telegram'ni sozlaydi, foydalanuvchini tanitadi va sahifa funksiyasini ishga tushiradi. */
-  async function ready(main) {
+  /** isPublic: sahifa kirmagan mehmonlarga ham ochiq (masalan, kalkulyatorlar) */
+  async function ready(main, { isPublic = false } = {}) {
     if (tg) {
       try {
         tg.ready();
@@ -409,13 +410,12 @@
           const r = await api('auth/telegram', { method: 'POST', body: { init_data: tg.initData } });
           setToken(r.token, r.user.tg_id);
         } catch (e) {
-          errorView(e);
-          return;
+          if (!isPublic) { errorView(e); return; }
         }
       }
     }
 
-    if (!token) {
+    if (!token && !isPublic) {
       location.replace(`/kirish/?next=${encodeURIComponent(location.pathname)}`);
       return;
     }

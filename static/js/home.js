@@ -117,6 +117,12 @@
 
       ${task}
 
+      <a href="/kalkulyator/" class="card tool-link">
+        <span class="h-ico blue">${ic('calc')}</span>
+        <span class="t-main"><b>Kalkulyatorlar</b><small>Kredit, nasiya, qarzdan chiqish, jamg'arma maqsadi</small></span>
+        ${ic('right')}
+      </a>
+
       <section class="card">
         <div class="card-title"><h3>Yutuqlarim</h3><span class="chip gold">${d.badges.filter((b) => b.earned).length}/${d.badges.length}</span></div>
         <div class="badges">

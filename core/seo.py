@@ -26,7 +26,7 @@ DEFAULTS = {
 VERIFICATION_NAME = re.compile(r"^(google[0-9a-f]{8,32}\.html|yandex_[0-9a-f]{8,32}\.html|BingSiteAuth\.xml)$")
 
 # Qidiruvga chiqadigan ochiq sahifalar (ilova sahifalari kirish talab qiladi — ular indekslanmaydi)
-PUBLIC_PAGES = [("/", "weekly", "1.0"), ("/haqida/", "monthly", "0.6")]
+PUBLIC_PAGES = [("/", "weekly", "1.0"), ("/kalkulyator/", "monthly", "0.8"), ("/haqida/", "monthly", "0.6")]
 
 
 def seo_data():
@@ -76,6 +76,7 @@ def robots_txt(request):
             "User-agent: *",
             "Allow: /$",
             "Allow: /haqida/",
+            "Allow: /kalkulyator/",
             "Disallow: /api/",
             "Disallow: /boshqaruv/",
             "Disallow: /admin/",

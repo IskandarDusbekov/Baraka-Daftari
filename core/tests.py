@@ -1032,3 +1032,15 @@ class PanelSecurityTests(BaseTestCase):
         })
         self.assertEqual(r.status_code, 200)
         self.assertFalse(Lesson.objects.filter(number=20).exists())
+
+
+class CalculatorPageTests(BaseTestCase):
+    def test_public_and_indexable(self):
+        r = self.client.get("/kalkulyator/")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'content="index, follow"')
+        self.assertContains(r, "js/calc.js")
+        self.assertContains(self.client.get("/sitemap.xml"), "/kalkulyator/")
+        self.assertIn("Allow: /kalkulyator/", self.client.get("/robots.txt").content.decode())
+        # ilova sahifalari esa indekslanmaydi
+        self.assertContains(self.client.get("/hamyon/"), 'content="noindex, nofollow"')

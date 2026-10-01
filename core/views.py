@@ -36,6 +36,7 @@ savings = page("pages/savings.html", "jamgarma")
 settings_page = page("pages/settings.html", "sozlamalar")
 about = page("pages/about.html", "haqida")
 login = page("pages/login.html", "kirish")
+calculators = page("pages/calc.html", "kalkulyator")
 _lesson = page("pages/lesson.html", "saboqlar")
 
 
