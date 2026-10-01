@@ -692,7 +692,9 @@ class PageTests(BaseTestCase):
         make_saboqlar()
         r = self.client.get("/")
         self.assertContains(r, "landing.js")
-        self.assertContains(r, "Niyat")  # saboqlar mundarijasi bazadan
+        self.assertNotContains(r, "Niyat")  # saboqlar mazmuni faqat ro'yxatdan o'tganlarga
+        self.assertContains(r, 'id="aloqa"')
+        self.assertContains(r, "/kalkulyator/")
         self.assertContains(r, "ko'rsatuvidan ilhomlangan holda")
         self.assertNotContains(r, "Barcha huquqlar")
 

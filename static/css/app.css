@@ -723,6 +723,12 @@ details.more[open] summary::after { content: " ▴"; }
 .month-switch.card { padding: 10px 12px; margin-bottom: 0; }
 .icon-btn[disabled] { opacity: .35; pointer-events: none; }
 
+/* ---------- mehmon rejimi (kirmagan foydalanuvchi ochiq sahifada) ---------- */
+.guest-only { display: none; }
+body.guest .guest-only { display: inline-flex; }
+body.guest .tabbar, body.guest .top-actions { display: none; }
+body.guest .page { padding-bottom: 32px; }
+
 /* ---------- menyu ---------- */
 .h-ico.gray { background: #f1f5f9; color: #475569; }
 .h-ico.gold { background: var(--gold-soft); color: #b45309; }

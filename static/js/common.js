@@ -442,6 +442,13 @@
       }
     }
 
+    // Mehmon (kirmagan) — ochiq sahifada ilova bo'limlari (menyu, saboqlar, hamyon…) ko'rinmaydi
+    if (!token && isPublic) {
+      document.body.classList.add('guest');
+      const brand = document.querySelector('.topbar .brand');
+      if (brand) brand.href = '/';
+    }
+
     if (!token && !isPublic) {
       location.replace(`/kirish/?next=${encodeURIComponent(location.pathname)}`);
       return;

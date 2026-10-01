@@ -17,13 +17,15 @@ def page(template, active):
 
 @xframe_options_exempt
 def landing(request):
-    """Ochiq bosh sahifa (landing). Kirgan foydalanuvchi JS orqali /asosiy/ ga o'tkaziladi."""
-    from . import services
+    """Ochiq bosh sahifa (landing). Kirgan foydalanuvchi JS orqali /asosiy/ ga o'tkaziladi.
 
-    lessons = services.published_lessons()
+    Saboqlar mazmuni bu yerda ko'rsatilmaydi — ular faqat ro'yxatdan o'tganlarga ochiq.
+    """
+    from .seo import site_links
+
     return render(request, "landing.html", {
         "bot_username": settings.BOT_USERNAME,
-        "lessons": lessons,
+        "site": site_links(),
         "dev_login": settings.DEV_LOGIN,
     })
 

@@ -47,10 +47,9 @@
 <header class="l-head">
   <a class="l-brand" href="/"><img src="{% static 'img/logo.svg' %}" alt="">Baraka <em>Daftari</em></a>
   <nav>
-    <a href="#qonunlar">Saboqlar</a>
-    <a href="#hisob">Hisoblang</a>
     <a href="/kalkulyator/">Kalkulyator</a>
     <a href="#savollar">Savollar</a>
+    <a href="#aloqa">Aloqa</a>
     <a class="l-login" href="/kirish/">Kirish</a>
   </nav>
 </header>
@@ -95,37 +94,13 @@
     <span class="hand">— 2-saboqdan</span>
   </section>
 
-  <!-- LESSONS AS TABLE OF CONTENTS -->
-  <section class="toc" id="qonunlar">
-    <div class="sec-head">
-      <p class="hand">Mundarija</p>
-      <h2>Har hafta — bitta qonun</h2>
-      <p>Har bir video bo'yicha qisqa mazmun, asosiy saboqlar va shu haftada nima qilish kerakligi.
-        Vazifani ilovaning o'zida bajarasiz.</p>
-    </div>
-    <ol class="chapters">
-      {% for l in lessons %}
-      <li>
-        <span class="num">{{ l.number|stringformat:"02d" }}</span>
-        <div>
-          <h3>{{ l.title }}</h3>
-          <p>{{ l.key_points_list.0|default:l.summary|truncatechars:140 }}</p>
-        </div>
-        {% if l.youtube_id %}<a class="watch" href="https://www.youtube.com/watch?v={{ l.youtube_id }}" target="_blank" rel="noopener" aria-label="{{ l.number }}-saboq videosi"><svg class="ic"><use href="#i-play"/></svg></a>{% endif %}
-      </li>
-      {% empty %}
-      <li><span class="num">01</span><div><h3>Birinchi saboq tez orada</h3><p>Yangi video chiqishi bilan shu yerda paydo bo'ladi.</p></div></li>
-      {% endfor %}
-      <li class="next"><span class="num">…</span><div><h3>Keyingi qonun</h3><p>Yangi video chiqqach qo'shiladi — bot xabar beradi.</p></div></li>
-    </ol>
-  </section>
-
   <!-- CALCULATOR -->
   <section class="calc" id="hisob">
     <div class="sec-head">
       <p class="hand">O'zingiz hisoblang</p>
       <h2>Oyligingizni yozing</h2>
-      <p>4-saboqdagi Sobir hojining qoidasi: qarz bo'lsa, topganingiz uch bo'lakka bo'linadi.</p>
+      <p>70 / 20 / 10 qoidasi: qarz bo'lsa, topganingiz uch bo'lakka bo'linadi.
+        Kredit va qarzni batafsil <a href="/kalkulyator/">kalkulyatorda</a> hisoblang.</p>
     </div>
     <div class="calc-box">
       <label class="calc-input">
@@ -215,6 +190,24 @@
     <details><summary>Ma'lumotlarim kimga ko'rinadi?</summary><p>Sizga va loyiha ma'muriyatiga (texnik yordam va xizmatni yaxshilash uchun). Kirish Telegram orqali tasdiqlanadi; ma'lumotlaringiz uchinchi shaxslarga berilmaydi va sotilmaydi.</p></details>
   </section>
 
+  <!-- CONTACT (admin panel → Sozlamalar) -->
+  <section class="contact" id="aloqa">
+    <div class="sec-head"><p class="hand">Savol yoki taklif bormi?</p><h2>Biz bilan bog'lanish</h2></div>
+    <div class="contact-links">
+      {% with c=site.contact %}
+      {% if c.telegram %}<a href="{{ c.telegram }}" target="_blank" rel="noopener noreferrer"><svg class="ic"><use href="#i-send"/></svg><span><b>Telegram</b><small>{{ c.telegram_name }}</small></span></a>{% endif %}
+      {% if c.channel %}<a href="{{ c.channel }}" target="_blank" rel="noopener noreferrer"><svg class="ic"><use href="#i-send"/></svg><span><b>Telegram kanal</b><small>Yangiliklar</small></span></a>{% endif %}
+      {% if c.instagram %}<a href="{{ c.instagram }}" target="_blank" rel="noopener noreferrer"><svg class="ic"><use href="#i-instagram"/></svg><span><b>Instagram</b><small>Bizni kuzating</small></span></a>{% endif %}
+      {% if c.phone %}<a href="tel:{{ c.phone }}"><svg class="ic"><use href="#i-call"/></svg><span><b>{{ c.phone_label|default:c.phone }}</b><small>Qo'ng'iroq</small></span></a>{% endif %}
+      {% if c.email %}<a href="mailto:{{ c.email }}"><svg class="ic"><use href="#i-mail"/></svg><span><b>{{ c.email }}</b><small>Email</small></span></a>{% endif %}
+      {% if not c.telegram and not c.channel and not c.instagram and not c.phone and not c.email and bot_username %}
+        <a href="{{ bot_link }}" target="_blank" rel="noopener"><svg class="ic"><use href="#i-send"/></svg><span><b>@{{ bot_username }}</b><small>Bot orqali yozing</small></span></a>
+      {% endif %}
+      {% if c.hours %}<p class="fine">{{ c.hours }}</p>{% endif %}
+      {% endwith %}
+    </div>
+  </section>
+
   <!-- DISCLAIMER -->
   <section class="l-disclaimer">
     <p class="caps">Ushbu loyiha Abdukarim Mirzayevning «Baraka Daftari» ko'rsatuvidan ilhomlangan holda, insonlarga qulaylik yaratish maqsadida ishlab chiqildi.</p>
@@ -229,6 +222,7 @@
 <footer class="l-foot">
   <span>Baraka Daftari</span>
   <a href="/kalkulyator/">Kredit kalkulyatori</a>
+  <a href="#aloqa">Biz bilan bog'lanish</a>
   <a href="/kirish/">Kirish</a>
   {% if bot_username %}<a href="{{ bot_link }}" rel="noopener">@{{ bot_username }}</a>{% endif %}
 </footer>
