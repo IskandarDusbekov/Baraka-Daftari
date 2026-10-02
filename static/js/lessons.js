@@ -1,9 +1,8 @@
-/* Saboqlar yo'lkasi (roadmap) */
+/* Saboqlar ro'yxati: bajarilgan, hozirgi va qulfdagi saboqlar */
 (() => {
   'use strict';
   const { api, esc, ic, toast, haptic, render, MONTHS } = B;
 
-  const OFFSETS = [0, 55, 85, 55, 0, -55, -85, -55];
   const dateLabel = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${d}-${MONTHS[m - 1].toLowerCase()}`; };
 
   async function main() {
@@ -22,35 +21,37 @@
       return;
     }
 
-    const nodes = lessons.map((l, i) => {
-      const inner = l.state === 'done' ? ic('check') : l.state === 'open' ? l.number : ic(l.state === 'wait' ? 'clock' : 'lock');
+    const STATUS = { done: 'Bajarildi', open: 'Hozirgi saboq', locked: "Oldingi saboq vazifasidan keyin ochiladi" };
+    const rows = lessons.map((l) => {
+      const mark = l.state === 'done' ? ic('check') : l.state === 'open' ? l.number : ic('lock');
       const clickable = l.state === 'done' || l.state === 'open';
-      const tag = clickable ? `a href="/saboqlar/${l.number}/"` : `button type="button" data-state="${l.state}"`;
-      return `<div class="node-wrap ${l.state === 'open' ? 'is-open' : ''}" style="transform:translateX(${OFFSETS[i % OFFSETS.length]}px)">
-          ${l.state === 'open' ? '<span class="start-bubble">BOSHLASH</span>' : ''}
-          <${tag} class="node ${l.state}" aria-label="${l.number}-saboq: ${esc(l.title)}">${inner}</${clickable ? 'a' : 'button'}>
-          <span class="node-label">${l.number}-saboq<b>${esc(l.title)}</b>${l.published_on ? `<small>${dateLabel(l.published_on)}</small>` : ''}</span>
-        </div>`;
+      const tag = clickable ? `a href="/saboqlar/${l.number}/"` : 'button type="button" data-locked';
+      return `<li><${tag} class="lrow ${l.state}">
+          <span class="lr-mark">${mark}</span>
+          <span class="lr-main"><small>${l.number}-saboq${l.published_on ? ` · ${dateLabel(l.published_on)}` : ''}</small>
+            <b>${esc(l.title)}</b><em>${STATUS[l.state] || ''}</em></span>
+          ${clickable ? ic('right', 'lr-go') : ''}
+        </${clickable ? 'a' : 'button'}></li>`;
     }).join('');
 
     const page = render(`
       <section class="card road-head">
-        <div class="row between"><h3><span class="h-ico blue">${ic('book')}</span> Saboqlar yo'lkasi</h3><span class="chip gold">${ic('star')} ${done * 10}</span></div>
+        <div class="card-title"><h3><span class="h-ico blue">${ic('book')}</span> Saboqlar</h3><span class="chip">${done} / ${lessons.length}</span></div>
         <div class="progress"><i data-w="${pct}"></i></div>
-        <p class="muted small">${lessons.length} ta saboqdan <b>${done}</b> tasi bajarildi. Har hafta yangi video — yangi saboq.</p>
+        <p class="muted small">Har bir saboq — bitta video va bitta amaliy vazifa. Vazifani bajarsangiz, keyingi saboq ochiladi.</p>
       </section>
-      <section class="road">${nodes}
-        <div class="node-wrap"><span class="node soon">${ic('clock')}</span>
-          <span class="node-label">Keyingi saboq<b>yangi video bilan qo'shiladi</b></span></div>
-      </section>`);
+      <ol class="lesson-list">${rows}
+        <li><div class="lrow soon"><span class="lr-mark">${ic('clock')}</span>
+          <span class="lr-main"><small>Keyingi saboq</small><b>Yangi video chiqqanda qo'shiladi</b></span></div></li>
+      </ol>`);
 
-    page.querySelectorAll('button.node').forEach((b) => {
+    page.querySelectorAll('[data-locked]').forEach((b) => {
       b.onclick = () => {
         haptic('warning');
         toast("Avval oldingi saboqning vazifasini bajaring — shunda bu saboq ochiladi");
       };
     });
-    const open = page.querySelector('.node.open');
+    const open = page.querySelector('.lrow.open');
     if (open) setTimeout(() => open.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250);
   }
 

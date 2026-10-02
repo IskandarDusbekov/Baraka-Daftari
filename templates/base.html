@@ -8,6 +8,17 @@
   <meta name="theme-color" content="#f4f7fb">
   <meta name="robots" content="{% if active in 'haqida kalkulyator' and active and seo.allow_indexing %}index, follow{% else %}noindex, nofollow{% endif %}">
   {% if active in 'haqida kalkulyator' and active %}<link rel="canonical" href="{{ seo.canonical }}">{% endif %}
+  {# Havola Telegram/Instagram'da ulashilganda chiqadigan karta #}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Baraka Daftari">
+  <meta property="og:locale" content="uz_UZ">
+  <meta property="og:url" content="{{ seo.canonical }}">
+  <meta property="og:title" content="{% block og_title %}{{ seo.og_title }}{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{{ seo.og_description }}{% endblock %}">
+  <meta property="og:image" content="{{ seo.base_url }}{% block og_image %}{% static 'img/og-card.png' %}{% endblock %}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="{% static 'img/logo.svg' %}" type="image/svg+xml">
   <link rel="apple-touch-icon" href="{% static 'img/logo-640.png' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -51,7 +62,6 @@
 
   <div id="sheet-root" class="sheet-root"></div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <canvas id="confetti" class="confetti"></canvas>
 
   <script src="{% static 'js/common.js' %}"></script>
   {% block script %}{% endblock %}

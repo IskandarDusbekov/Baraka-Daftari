@@ -1,4 +1,7 @@
 {% extends "base.html" %}{% load static %}
 {% block title %}Kredit kalkulyatori va narxlar o'sishi — Baraka Daftari{% endblock %}
 {% block meta_description %}Kredit kalkulyatori: oylik to'lov, ortiqcha foiz va oldinroq yopish. Qarzdan qachon qutulasiz va narxlar o'sishi pulingizni qanchalik qadrsizlantirgani — bepul, o'zbek tilida.{% endblock %}
+{% block og_title %}Kredit kalkulyatori — Baraka Daftari{% endblock %}
+{% block og_description %}Kredit olishdan oldin hisoblang: oyiga qancha to'laysiz, bankka qancha ortiqcha berasiz va qachon qutulasiz.{% endblock %}
+{% block og_image %}{% static 'img/og-calc.png' %}{% endblock %}
 {% block script %}<script src="{% static 'js/credit.js' %}"></script><script src="{% static 'js/calc.js' %}"></script>{% endblock %}

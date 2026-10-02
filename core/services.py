@@ -346,21 +346,6 @@ def ensure_recurring(user, today=None):
     return created
 
 
-def badges(user, lessons_done, lessons_total):
-    has_payment = DebtPayment.objects.filter(debt__user=user).exists()
-    items = [
-        ("sprout", "Birinchi saboq", lessons_done >= 1),
-        ("safe", "Zaxira egasi", user.savings.exists()),
-        ("receipt", "Hisobchi", user.expenses.count() >= 10),
-        ("target", "Qarz jangchisi", has_payment),
-        ("check-circle", "Bir qarzdan ozod", user.debts.filter(closed_at__isnull=False).exists()),
-        ("flame", "Bir oylik intizom", lessons_done >= 4),
-        ("trophy", "Hamma saboqlar", lessons_total > 0 and lessons_done >= lessons_total),
-    ]
-    # icon — SVG sprite'dagi ikonka nomi (templates/partials/icons.html)
-    return [{"icon": i, "title": t, "earned": e} for i, t, e in items]
-
-
 # ---------------------------------------------------------------- bank krediti
 
 MAX_CREDIT_MONTHS = 1200

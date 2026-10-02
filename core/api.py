@@ -347,7 +347,6 @@ def me(request):
         "recurring_total": total_of(user.recurring.filter(active=True)),
         "debts": services.debts_summary(user),
         "month": services.month_totals(user, today.year, today.month),
-        "badges": services.badges(user, done, len(states)),
         "ask_rating": services.should_ask_rating(user),
     })
 

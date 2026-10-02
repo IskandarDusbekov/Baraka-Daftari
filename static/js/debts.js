@@ -537,16 +537,16 @@
       try {
         const r = await api(`debts/${debt.id}/pay`, { method: 'POST', body: { amount } });
         if (r.just_closed) {
-          B.confetti(200);
-          B.setSheet(B.celebrate('check-circle', 'Qarz yopildi!',
-            `«${esc(debt.name)}» to'liq to'landi. Alhamdulillah! Endi uning to'lovini keyingi qarzga yo'naltiring.`,
+          haptic('success');
+          B.setSheet(B.celebrate('check-circle', 'Qarz yopildi',
+            `«${esc(debt.name)}» to'liq to'landi. Endi shu oylik to'lovni keyingi qarzga yo'naltiring — u tezroq yopiladi.`,
             '<button class="btn big" id="p-done">Davom etish</button>'))
             .querySelector('#p-done').onclick = () => B.closeSheet();
           B.onSheetClose(main);
         } else {
           B.closeSheet(true);
           haptic('success');
-          toast(`Qarzning ${r.debt.percent}% i to'landi!`);
+          toast(`To'lov yozildi. Qarzning ${r.debt.percent}% i to'landi`);
           await main();
         }
       } catch (e) { toast(e.message, true); }

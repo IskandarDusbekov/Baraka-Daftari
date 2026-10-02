@@ -43,7 +43,7 @@
       </section>`;
     } else {
       task = `<section class="card lesson-mini">
-        <span class="h-ico green">${ic('trophy')}</span>
+        <span class="h-ico green">${ic('check-circle')}</span>
         <div><b>Barcha ${L.total} ta saboq o'tildi!</b></div>
         <a class="icon-btn" href="/saboqlar/" aria-label="Saboqlar">${ic('right')}</a>
       </section>`;
@@ -52,7 +52,6 @@
     const page = render(`
       <section class="hello">
         <div><p class="muted">Assalomu alaykum,</p><h1>${esc(u.first_name || u.name)}</h1></div>
-        <div class="stars" title="Yulduzlar">${ic('star')} ${L.done * 10}</div>
       </section>
 
       <section class="balance">
@@ -67,7 +66,7 @@
       <nav class="quick-grid" aria-label="Tezkor amallar">
         <button type="button" class="qa" id="exp-btn"><span class="qa-ico orange">${ic('minus')}</span>Xarajat</button>
         <button type="button" class="qa" id="inc-btn"><span class="qa-ico blue">${ic('plus')}</span>Kirim</button>
-        <a class="qa" href="/jamgarma/"><span class="qa-ico green">${ic('safe')}</span>Jamg'arma</a>
+        <a class="qa" href="/kalkulyator/"><span class="qa-ico green">${ic('calc')}</span>Kalkulyator</a>
         <a class="qa" href="/hisobot/"><span class="qa-ico purple">${ic('chart')}</span>Hisobot</a>
       </nav>
 
@@ -104,13 +103,6 @@
         ${recent.entries.length
           ? `<ul class="entries">${recent.entries.slice(0, 5).map((e) => B.entryRow(e)).join('')}</ul>`
           : `<div class="empty"><span class="e-ico">${ic('file')}</span>Bu oy hali yozuv yo'q. «Xarajat» yoki «Kirim» ni bosing.</div>`}
-      </section>
-
-      <section class="card">
-        <div class="card-title"><h3>Yutuqlarim</h3><span class="chip gold">${d.badges.filter((b) => b.earned).length}/${d.badges.length}</span></div>
-        <div class="badges">
-          ${d.badges.map((b) => `<div class="badge ${b.earned ? 'on' : 'off'}"><span class="bi">${ic(b.icon)}</span>${esc(b.title)}</div>`).join('')}
-        </div>
       </section>`);
 
     page.querySelector('#exp-btn').onclick = () => B.expenseSheet(main);

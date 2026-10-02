@@ -57,8 +57,7 @@
       if (st.status === 'ok') {
         poll++;
         B.setToken(st.token, st.user.tg_id);
-        B.confetti(90);
-        setTimeout(() => location.replace(safeNext), 600);
+        location.replace(safeNext);
         return;
       }
       if (st.status !== 'pending') break;

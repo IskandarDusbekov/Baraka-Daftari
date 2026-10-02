@@ -199,8 +199,12 @@
       <nav class="menu-grid">${MENU.map(([href, icon, color, title, hint]) => `
         <a href="${href}" class="menu-item ${here === href ? 'on' : ''}">
           <span class="h-ico ${color}">${ic(icon)}</span><span><b>${title}</b><small>${hint}</small></span></a>`).join('')}
+        <button type="button" class="menu-item" id="menu-share"><span class="h-ico green">${ic('send')}</span><span><b>Do'stga tavsiya qilish</b><small>Telegram orqali havola yuborish</small></span></button>
         <button type="button" class="menu-item" id="menu-rate"><span class="h-ico gold">${ic('star')}</span><span><b>Baho berish</b><small>Ilova sizga yoqdimi?</small></span></button>
       </nav>`);
+    body.querySelector('#menu-share').onclick = () => {
+      share(`${location.origin}/`, "Xarajat, jamg'arma va qarzlarni yozib boradigan bepul daftar. Kredit kalkulyatori ham bor — foydali bo'ladi:");
+    };
     body.querySelector('#menu-rate').onclick = () => { closeSheet(true); setTimeout(() => ratingModal(), 250); };
     // Hozirgi sahifa tanlansa — shunchaki menyuni yopamiz
     body.querySelectorAll('a.menu-item').forEach((a) => {
@@ -365,39 +369,6 @@
     }));
   }
 
-  // ------------------------------------------------------------------ konfetti
-  function confetti(amount = 140) {
-    const canvas = document.getElementById('confetti');
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
-    ctx.scale(dpr, dpr);
-    const colors = ['#22c55e', '#f59e0b', '#3b82f6', '#ef4444', '#a855f7', '#14b8a6'];
-    const parts = Array.from({ length: amount }, () => ({
-      x: innerWidth / 2 + (Math.random() - 0.5) * 80,
-      y: innerHeight * 0.35,
-      vx: (Math.random() - 0.5) * 14,
-      vy: -Math.random() * 13 - 4,
-      s: Math.random() * 7 + 5,
-      r: Math.random() * Math.PI,
-      vr: (Math.random() - 0.5) * 0.3,
-      c: colors[Math.floor(Math.random() * colors.length)],
-    }));
-    const start = performance.now();
-    haptic('success');
-    (function frame(t) {
-      ctx.clearRect(0, 0, innerWidth, innerHeight);
-      parts.forEach((p) => {
-        p.vy += 0.35; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r);
-        ctx.fillStyle = p.c; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2);
-        ctx.restore();
-      });
-      if (t - start < 2600) requestAnimationFrame(frame);
-      else ctx.clearRect(0, 0, innerWidth, innerHeight);
-    })(start);
-  }
-
   // ------------------------------------------------------------------ sahifa
   const $page = document.getElementById('page');
 
@@ -496,8 +467,8 @@
       try {
         const r = await api('savings', { method: 'POST', body: { amount: sum, income_id: incomeId, bucket } });
         const target = BUCKETS[r.saving.bucket];
-        confetti();
-        setSheet(celebrate('sparkles', 'Barakalla!', `O'zingiz uchun yana <b>${som(sum)}</b> jamg'ardingiz — <b>${target.label.toLowerCase()}</b>ga.`,
+        haptic('success');
+        setSheet(celebrate('check-circle', "Jamg'armaga o'tkazildi", `<b>${som(sum)}</b> — <b>${target.label.toLowerCase()}</b>ga yozildi.`,
           `<div class="treasure">${ic('safe')}<span>Umumiy jamg'arma</span><b>${som(r.reserve_total)}</b>
              <small>Qo'riqchi: ${som(r.savings.guard)} · O'sadigan: ${som(r.savings.grow)}</small></div>
            <button class="btn big" id="save-done">Davom etish</button>`))
@@ -918,6 +889,6 @@
     rateLine, currencySheet, onboardingSheet,
     api, ApiError, setToken, logout, get token() { return token; },
     toast, openSheet, setSheet, closeSheet, onSheetClose, celebrate, confirmAsk, openModal, ratingModal, maybeAskRating,
-    bindMoney, withBusy, animateBars, confetti, render, errorView, disclaimerHtml, ready,
+    bindMoney, withBusy, animateBars, render, errorView, disclaimerHtml, ready,
   };
 })();

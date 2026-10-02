@@ -64,7 +64,7 @@
             <span class="box">${ic('check')}</span><span>${esc(t)}</span></label></li>`).join('')}</ul>`
           : '<p class="muted">Videoni ko\'ring va saboqlarni o\'qib chiqing.</p>'}
         ${isDone
-          ? `<div class="done-box">${ic('check-circle')} Bu saboq bajarilgan. Barakalla!${l.note ? `<p class="mt" style="font-weight:600">«${esc(l.note)}»</p>` : ''}</div>`
+          ? `<div class="done-box">${ic('check-circle')} Bu saboq bajarilgan.${l.note ? `<p class="mt" style="font-weight:600">«${esc(l.note)}»</p>` : ''}</div>`
           : `${l.task_type === 'note' || l.note_prompt ? `<label class="field"><span>${esc(l.note_prompt || 'Javobingiz')}${l.task_type === 'note' ? '' : ' (ixtiyoriy)'}</span><textarea class="input" id="l-note" maxlength="2000" placeholder="Shu yerga yozing…"></textarea></label>` : ''}
              ${l.task_type === 'debt_list' ? `<label class="check"><input type="checkbox" id="l-nodebt"> Alhamdulillah, qarzim yo'q</label>` : ''}
              <div id="l-err"></div>
@@ -97,11 +97,11 @@
         const r = await api(`lessons/${l.number}/complete`, { method: 'POST', body: {
           note: note ? note.value : '', no_debt: noDebt ? noDebt.checked : false,
         } });
-        B.confetti();
-        B.openSheet(B.celebrate('sparkles', 'Barakalla! +10 yulduz',
-          `${l.number}-saboq yakunlandi. ${r.total} ta saboqdan ${r.done} tasi ortda qoldi.`,
+        haptic('success');
+        B.openSheet(B.celebrate('check-circle', `${l.number}-saboq yakunlandi`,
+          `${r.total} ta saboqdan ${r.done} tasi bajarildi.${r.done < r.total ? ' Keyingi saboq ochildi.' : ''}`,
           `<div class="progress"><i data-w="${Math.round((r.done * 100) / r.total)}"></i></div>
-           <a class="btn big" href="/saboqlar/">Saboqlar yo'lkasi</a>`), () => main());
+           <a class="btn big" href="/saboqlar/">Saboqlar ro'yxati</a>`), () => main());
         B.animateBars(document.getElementById('sheet-root'));
       } catch (e) {
         const box = page.querySelector('#l-err');
