@@ -4,12 +4,13 @@
 <header class="p-head"><h1>Umumiy ko'rinish</h1><span class="p-muted">Har 60 soniyada yangilanadi</span></header>
 
 <section class="p-kpis">
-  <div class="kpi"><span>Jami foydalanuvchi</span><b>{{ counts.total|num }}</b><small>bugun +{{ counts.new_today|num }}</small></div>
-  <div class="kpi"><span>Yangi (7 kun)</span><b>{{ counts.new_7|num }}</b><small>30 kun: {{ counts.new_30|num }}</small></div>
-  <div class="kpi"><span>Faol bugun</span><b>{{ counts.active_today|num }}</b><small>7 kun: {{ counts.active_7|num }} · 30 kun: {{ counts.active_30|num }}</small></div>
-  <div class="kpi"><span>Botni ishlatadi</span><b>{{ counts.bot_started|num }}</b><small>bloklagan: {{ counts.bot_blocked|num }}</small></div>
-  <div class="kpi"><span>Daromadini sozlagan</span><b>{{ counts.income_set|pct:counts.total }}%</b><small>{{ counts.income_set|num }} kishi</small></div>
-  <a class="kpi link" href="{% url 'panel:feedback' %}"><span>O'rtacha baho</span>
+  <div class="kpi ico"><i class="k-ico green"><svg class="ic"><use href="#i-users"/></svg></i><span>Jami foydalanuvchi</span><b>{{ counts.total|num }}</b><small>bugun +{{ counts.new_today|num }}</small></div>
+  <div class="kpi ico"><i class="k-ico blue"><svg class="ic"><use href="#i-up"/></svg></i><span>Yangi (7 kun)</span><b>{{ counts.new_7|num }}</b>
+    <small>{% if growth.change is not None %}<em class="{% if growth.change >= 0 %}good{% else %}bad{% endif %}">{% if growth.change >= 0 %}▲ +{% else %}▼ {% endif %}{{ growth.change }}%</em> o'tgan haftaga nisbatan{% else %}o'tgan hafta: {{ growth.new_prev_7|num }}{% endif %}</small></div>
+  <div class="kpi ico"><i class="k-ico orange"><svg class="ic"><use href="#i-flame"/></svg></i><span>Faol bugun</span><b>{{ counts.active_today|num }}</b><small>7 kun: {{ counts.active_7|num }} · 30 kun: {{ counts.active_30|num }}</small></div>
+  <div class="kpi ico"><i class="k-ico teal"><svg class="ic"><use href="#i-repeat"/></svg></i><span>Har kuni qaytadi</span><b>{{ stickiness }}%</b><small>kunlik / oylik faollar ({{ dau|num }} / {{ mau|num }})</small></div>
+  <div class="kpi ico"><i class="k-ico blue"><svg class="ic"><use href="#i-send"/></svg></i><span>Botni ishlatadi</span><b>{{ counts.bot_started|num }}</b><small>bloklagan: {{ counts.bot_blocked|num }}</small></div>
+  <a class="kpi ico link" href="{% url 'panel:feedback' %}"><i class="k-ico gold"><svg class="ic"><use href="#i-star"/></svg></i><span>O'rtacha baho</span>
     <b>{% if rating.avg %}{{ rating.avg|floatformat:1 }} ★{% else %}—{% endif %}</b>
     <small>{{ rating.c|num }} ta baho{% if rating.unread %} · <em class="new">{{ rating.unread }} yangi</em>{% endif %}</small></a>
 </section>
@@ -26,6 +27,62 @@
     {% endfor %}
   </div>
 </section>
+
+<div class="p-grid2">
+  <section class="p-card">
+    <div class="p-card-head"><h2>Qaytib kelish (retention)</h2><a href="{% url 'panel:funnel' %}">Voronka →</a></div>
+    <div class="retention">
+      {% for r in retention %}
+      <div class="ret">
+        <div class="ring" style="--p:{{ r.pct }}"><b>{{ r.pct }}%</b></div>
+        <b>{{ r.label }}</b>
+        <small class="p-muted">{{ r.back|num }} / {{ r.cohort|num }} kishi</small>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="p-muted small mt">Oxirgi 90 kunda ro'yxatdan o'tganlarning qanchasi N kundan keyin ham ilovaga kirgan. Ertasi kuni 30%+ — yaxshi, 1 oydan keyin 10%+ — yaxshi natija.</p>
+  </section>
+  <section class="p-card">
+    <div class="p-card-head"><h2>Funksiyalardan foydalanish</h2><span class="p-muted small">barcha foydalanuvchilardan</span></div>
+    <div class="h-bars">
+      {% for a in adoption %}
+      <div class="hb"><span>{{ a.label }}</span><div class="p-progress"><i style="width:{{ a.pct }}%"></i></div><b>{{ a.pct }}%</b><small class="p-muted">{{ a.count|num }}</small></div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<div class="p-grid2">
+  <section class="p-card">
+    <div class="p-card-head"><h2>Nimaga ko'p pul sarflashadi?</h2><span class="p-muted small">30 kun · {{ exp_count|num }} ta xarajat</span></div>
+    {% if cats %}
+    <div class="donut-row">
+      <div class="donut" style="background:{{ cats_donut }}"><span><small>Yozuv</small><b>{{ exp_count|num }}</b></span></div>
+      <ul class="legend-list">
+        {% for c in cats %}<li><span class="cat-ico" style="--c:{{ c.color }}"><svg class="ic"><use href="#i-{{ c.icon }}"/></svg></span>
+          <span class="ll-name">{{ c.label }}<small>{{ c.amount|num }} ta yozuv</small></span><b>{{ c.pct }}%</b></li>{% endfor %}
+      </ul>
+    </div>
+    {% if needs %}
+    <h3 class="sub mt">Zarur · Kerak · Havas (yozuvlar ulushi)</h3>
+    <div class="stack-bar">{% for n in needs %}<i style="flex:{{ n.pct }};background:{{ n.color }}" title="{{ n.label }}: {{ n.pct }}%"></i>{% endfor %}</div>
+    <div class="legend wrap mt-s">{% for n in needs %}<span><i style="background:{{ n.color }}"></i>{{ n.label }} {{ n.pct }}%</span>{% endfor %}</div>
+    {% endif %}
+    {% else %}<p class="p-muted">30 kunda xarajat yozilmagan</p>{% endif %}
+  </section>
+  <section class="p-card">
+    <div class="p-card-head"><h2>Qaysi soatda faol?</h2><span class="p-muted small">30 kun, Toshkent vaqti</span></div>
+    <div class="bars sm hours">
+      {% for h in hourly %}
+      <div class="bar {% if peak_hour and h.hour == peak_hour.hour %}peak{% endif %}" title="{{ h.hour }}:00 — {{ h.value|num }} ta amal">
+        <i class="c-reg" style="height:{{ h.h }}%"></i>
+        {% if h.hour|divisibleby:3 %}<em>{{ h.hour }}</em>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if peak_hour %}<p class="tip-box mt"><svg class="ic"><use href="#i-bulb"/></svg>Eng faol vaqt — <b>{{ peak_hour.hour }}:00–{{ peak_hour.hour|add:1 }}:00</b>. Saboq e'lonlari va xabarlarni shu vaqtdan biroz oldin yuboring.</p>{% endif %}
+  </section>
+</div>
 
 <div class="p-grid2">
   <section class="p-card">
@@ -51,12 +108,13 @@
 <div class="p-grid2">
   <section class="p-card">
     <div class="p-card-head"><h2>Yangi ro'yxatdan o'tganlar</h2><a href="{% url 'panel:users' %}">Barchasi →</a></div>
-    <table class="p-table">
+    <ul class="entry-list">
       {% for u in latest %}
-      <tr><td><a href="{% url 'panel:user' u.uid %}">{{ u.display_name }}</a>{% if u.username %} <span class="p-muted">@{{ u.username }}</span>{% endif %}</td>
-        <td class="r p-muted">{{ u.created_at|date:"d.m H:i" }}</td></tr>
-      {% empty %}<tr><td class="p-muted">Hali foydalanuvchi yo'q</td></tr>{% endfor %}
-    </table>
+      <li><span class="mini-avatar">{{ u.display_name|first|upper }}</span>
+        <span class="el-main"><b><a href="{% url 'panel:user' u.uid %}">{{ u.display_name }}</a></b><small>{% if u.username %}@{{ u.username }} · {% endif %}{{ u.visits }} tashrif</small></span>
+        <small class="p-muted nowrap">{{ u.created_at|date:"d.m H:i" }}</small></li>
+      {% empty %}<li class="p-muted">Hali foydalanuvchi yo'q</li>{% endfor %}
+    </ul>
   </section>
   <section class="p-card">
     <div class="p-card-head"><h2>Yuborilayotgan xabarlar</h2><a href="{% url 'panel:broadcasts' %}">Xabarlar →</a></div>

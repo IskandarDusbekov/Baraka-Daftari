@@ -29,6 +29,7 @@ from core.models import (
     SeoSettings, SiteSettings, TgUser, VerificationFile, total_of,
 )
 
+from . import analytics
 from .forms import (
     AdminCreateForm, BroadcastForm, LessonForm, MessageForm, PasswordSetForm, SeoForm, SiteSettingsForm,
     VerificationUploadForm,
@@ -157,7 +158,7 @@ def _dashboard_stats():
         })
     rating = Feedback.objects.aggregate(avg=Avg("rating"), c=Count("id"), unread=Count("id", filter=Q(is_read=False)))
     return {"counts": counts, "chart": chart, "top_actions": top_actions, "money": money,
-            "lessons_done": LessonProgress.objects.count(), "rating": rating}
+            "lessons_done": LessonProgress.objects.count(), "rating": rating, **analytics.dashboard_insights()}
 
 
 @staff
@@ -303,23 +304,11 @@ def _csv_safe(value):
 @staff
 def user_detail(request, uid):
     u = get_object_or_404(TgUser, uid=uid)
-    today = timezone.localdate()
-    month = services.month_totals(u, today.year, today.month)
-    lessons = services.lesson_states(u)
-    totals = {
-        "income": total_of(u.incomes.all()),
-        "expense": total_of(u.expenses.all()),
-        "incomes_count": u.incomes.count(),
-        "expenses_count": u.expenses.count(),
-    }
     log_page = Paginator(u.activity.all(), 30).get_page(request.GET.get("page"))
-    labels = dict(ActivityLog.ACTIONS)
     return render(request, "panel/user_detail.html", {
-        "nav": "users", "u": u, "month": month, "totals": totals,
-        "savings": services.savings_summary(u), "debts": list(u.debts.all()),
-        "debt_summary": services.debts_summary(u), "lessons": lessons,
-        "recurring": list(u.recurring.all()), "expenses": u.expenses.all()[:10],
-        "log_page": log_page, "labels": labels, "message_form": MessageForm(),
+        "nav": "users", "u": u, **analytics.user_profile(u),
+        "recurring": list(u.recurring.all()),
+        "log_page": log_page, "labels": dict(ActivityLog.ACTIONS), "message_form": MessageForm(),
         "feedback": list(u.feedback.all()[:5]),
     })
 

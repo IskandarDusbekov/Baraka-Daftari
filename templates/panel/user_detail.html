@@ -1,103 +1,219 @@
 {% extends "panel/base.html" %}{% load panel_tags %}
 {% block title %}{{ u.display_name }}{% endblock %}
 {% block content %}
-<header class="p-head">
-  <div>
-    <a class="p-back" href="{% url 'panel:users' %}">← Foydalanuvchilar</a>
-    <h1>{{ u.display_name }} {% if not u.is_active %}<span class="tag red">bloklangan</span>{% endif %}</h1>
-    <p class="p-muted">{% if u.username %}@{{ u.username }} · {% endif %}Telegram ID <span class="mono">{{ u.tg_id }}</span> · hisob valyutasi: <b>{{ u.get_currency_display }}</b></p>
-    <p class="p-muted small">UUID <span class="mono">{{ u.uid }}</span></p>
+<a class="p-back" href="{% url 'panel:users' %}">← Foydalanuvchilar</a>
+
+{# ---------------------------------------------------------------- profil sarlavhasi #}
+<section class="profile">
+  <div class="pf-main">
+    <span class="pf-avatar {% if not u.is_active %}off{% endif %}">{{ initials }}</span>
+    <div class="pf-id">
+      <h1>{{ u.display_name }}</h1>
+      <p class="p-muted">{% if u.username %}@{{ u.username }} · {% endif %}ID <span class="mono">{{ u.tg_id }}</span> · {{ u.get_currency_display }}</p>
+      <div class="pf-tags">
+        {% if not u.is_active %}<span class="tag red">Bloklangan</span>{% elif active_days %}<span class="tag green">Faol</span>{% else %}<span class="tag">30 kun kirmagan</span>{% endif %}
+        {% if u.bot_blocked %}<span class="tag red">Botni bloklagan</span>{% elif u.bot_started %}<span class="tag blue">Bot faol</span>{% else %}<span class="tag">Botni ochmagan</span>{% endif %}
+        {% if u.visits >= 10 %}<span class="tag gold">Sodiq · {{ u.visits }} tashrif</span>{% endif %}
+        {% if lent %}<span class="tag green">Qarz bergan · {{ lent|length }}</span>{% endif %}
+      </div>
+    </div>
   </div>
-  <div class="p-actions">
+  <div class="pf-stats">
+    <div><span>Ro'yxatdan</span><b>{{ u.created_at|date:"d.m.Y" }}</b><small>{{ u.created_at|timesince }} oldin</small></div>
+    <div><span>Oxirgi kirish</span><b>{{ u.last_seen|date:"d.m H:i" }}</b><small>{{ u.last_seen|timesince }} oldin</small></div>
+    <div><span>Tashriflar</span><b>{{ u.visits|num }}</b><small>30 kunda {{ active_days }} kun faol</small></div>
+    <div><span>Saboqlar</span><b>{{ lessons_done }} / {{ lessons|length }}</b><div class="p-progress"><i style="width:{{ lessons_pct }}%"></i></div></div>
+  </div>
+  <div class="p-actions pf-actions">
     <form method="post" action="{% url 'panel:user_action' u.uid %}">{% csrf_token %}
       <input type="hidden" name="action" value="toggle_notify">
-      <button class="p-btn ghost">{% if u.notify %}Eslatmalarni o'chirish{% else %}Eslatmalarni yoqish{% endif %}</button></form>
+      <button class="p-btn ghost sm"><svg class="ic"><use href="#i-bell"/></svg>{% if u.notify %}Eslatmalarni o'chirish{% else %}Eslatmalarni yoqish{% endif %}</button></form>
     <form method="post" action="{% url 'panel:user_action' u.uid %}"
           data-confirm="Foydalanuvchi barcha qurilmalarda (Telegram, sayt) hisobdan chiqariladi va qayta kirishi kerak bo'ladi."
           data-confirm-title="Sessiyalarni yopish" data-confirm-ok="Ha, yopish">{% csrf_token %}
       <input type="hidden" name="action" value="logout_all">
-      <button class="p-btn ghost">Sessiyalarni yopish</button></form>
-    {% if request.user.is_superuser %}<a class="p-btn ghost" href="{% url 'panel:admins' %}?from={{ u.uid }}#yangi">Admin qilish</a>{% endif %}
+      <button class="p-btn ghost sm"><svg class="ic"><use href="#i-logout"/></svg>Sessiyalarni yopish</button></form>
+    {% if request.user.is_superuser %}<a class="p-btn ghost sm" href="{% url 'panel:admins' %}?from={{ u.uid }}#yangi"><svg class="ic"><use href="#i-shield"/></svg>Admin qilish</a>{% endif %}
     <form method="post" action="{% url 'panel:user_action' u.uid %}"
           data-confirm="{% if u.is_active %}Foydalanuvchi ilovaga va botga kira olmaydi, ochiq sessiyalari darhol yopiladi. Ma'lumotlari o'chmaydi — istalgan payt blokdan chiqarish mumkin.{% else %}Foydalanuvchi yana ilovadan foydalana oladi.{% endif %}"
           data-confirm-title="{% if u.is_active %}Bloklash{% else %}Blokdan chiqarish{% endif %}"
           data-confirm-ok="{% if u.is_active %}Ha, bloklash{% else %}Ha, chiqarish{% endif %}" {% if u.is_active %}data-danger{% endif %}>{% csrf_token %}
       <input type="hidden" name="action" value="toggle_active">
-      <button class="p-btn {% if u.is_active %}danger{% endif %}">{% if u.is_active %}Bloklash{% else %}Blokdan chiqarish{% endif %}</button></form>
+      <button class="p-btn sm {% if u.is_active %}danger{% endif %}"><svg class="ic"><use href="#i-lock"/></svg>{% if u.is_active %}Bloklash{% else %}Blokdan chiqarish{% endif %}</button></form>
   </div>
-</header>
+</section>
 
-<section class="p-kpis">
-  <div class="kpi"><span>Ro'yxatdan o'tgan</span><b class="sm">{{ u.created_at|date:"d.m.Y H:i" }}</b><small>{{ u.created_at|timesince }} oldin</small></div>
-  <div class="kpi"><span>Oxirgi kirish</span><b class="sm">{{ u.last_seen|date:"d.m.Y H:i" }}</b><small>{{ u.last_seen|timesince }} oldin · {{ u.visits|num }} marta kirgan</small></div>
-  <div class="kpi"><span>Daromad</span><b class="sm">{% if u.income_type == 'salary' %}{{ u.monthly_income|money:u.currency }}{% elif u.income_type == 'irregular' %}Oylik olmaydi{% else %}Sozlanmagan{% endif %}</b><small>o'ziga {{ u.save_percent }}% · qo'riqchi {{ u.guard_months }} oy</small></div>
-  <div class="kpi"><span>Bot</span><b class="sm">{% if u.bot_blocked %}Bloklagan{% elif u.bot_started %}Faol{% else %}Ishga tushirmagan{% endif %}</b><small>eslatmalar {% if u.notify %}yoqiq{% else %}o'chiq{% endif %}</small></div>
+{# ---------------------------------------------------------------- ilovadagidek rangli kartalar #}
+<div class="app-cards">
+  <section class="app-card green">
+    <span class="ac-label"><svg class="ic"><use href="#i-wallet"/></svg>Bu oy qolgan pul</span>
+    <b class="ac-big">{% if month.base_income %}{{ month.left|money:u.currency }}{% else %}—{% endif %}</b>
+    <div class="ac-progress"><i style="width:{{ spent_pct }}%"></i></div>
+    <small>{% if month.base_income %}{{ spent_pct }}% sarflandi{% else %}Daromad kiritilmagan{% endif %}</small>
+    <div class="ac-stats">
+      <div><span>Daromad</span><b>{{ month.base_income|money:u.currency }}</b></div>
+      <div><span>Xarajat</span><b>{{ month.expense|money:u.currency }}</b></div>
+    </div>
+  </section>
+  <section class="app-card teal">
+    <span class="ac-label"><svg class="ic"><use href="#i-safe"/></svg>Jamg'arma</span>
+    <b class="ac-big">{{ savings.total|money:u.currency }}</b>
+    <div class="ac-progress"><i style="width:{{ save_pct }}%"></i></div>
+    <small>Bu oy o'ziga: {{ month.saved|money:u.currency }} / {{ month.should_save|money:u.currency }} ({{ u.save_percent }}%)</small>
+    <div class="ac-stats">
+      <div><span>Qo'riqchi</span><b>{{ savings.guard|money:u.currency }}</b></div>
+      <div><span>O'sadigan</span><b>{{ savings.grow|money:u.currency }}</b></div>
+    </div>
+  </section>
+  <section class="app-card orange">
+    <span class="ac-label"><svg class="ic"><use href="#i-card"/></svg>Qolgan qarz</span>
+    <b class="ac-big">{{ debt_summary.remaining|money:u.currency }}</b>
+    <div class="ac-progress"><i style="width:{{ debt_summary.percent }}%"></i></div>
+    <small>{% if debt_summary.total %}{{ debt_summary.percent }}% to'langan · {{ debt_summary.count_active }} ta faol{% else %}Qarz kiritilmagan{% endif %}</small>
+    <div class="ac-stats">
+      <div><span>Daromad turi</span><b>{% if u.income_type == 'salary' %}Oylik{% elif u.income_type == 'irregular' %}O'zgaruvchan{% else %}—{% endif %}</b></div>
+      <div><span>Oylik</span><b>{% if u.monthly_income %}{{ u.monthly_income|money:u.currency }}{% else %}—{% endif %}</b></div>
+    </div>
+  </section>
+</div>
+
+{# ---------------------------------------------------------------- 30 kunlik tahlil #}
+<section class="p-card">
+  <div class="p-card-head"><h2>Oxirgi 30 kun tahlili</h2>
+    <span class="p-muted small">{{ report.start }} — {{ report.end }}</span></div>
+  <div class="mini-kpis">
+    <div><span>Xarajat</span><b>{{ report.expense|money:u.currency }}</b>
+      {% if report.change_pct is not None %}<small class="{% if report.change_pct > 0 %}bad{% else %}good{% endif %}">{% if report.change_pct > 0 %}▲ +{% else %}▼ {% endif %}{{ report.change_pct }}% oldingi 30 kunga nisbatan</small>{% endif %}</div>
+    <div><span>Kunlik o'rtacha</span><b>{{ report.daily_avg|money:u.currency }}</b><small>{{ report.days_with_entries }} kun yozgan</small></div>
+    <div><span>Kirim</span><b>{{ report.income|money:u.currency }}</b><small>jamg'armaga {{ report.save_rate }}%</small></div>
+    <div><span>Qarzga to'lagan</span><b>{{ report.debt_paid|money:u.currency }}</b><small>sof qoldiq: {{ report.net|money:u.currency }}</small></div>
+  </div>
+
+  <h3 class="sub">Kunlik xarajat</h3>
+  <div class="bars sm">
+    {% for d in daily %}
+    <div class="bar" title="{{ d.date|date:'d.m' }}: {{ d.value|money:u.currency }}">
+      <i class="c-exp" style="height:{{ d.h }}%"></i>
+      {% if forloop.counter0|divisibleby:5 %}<em>{{ d.date|date:"d.m" }}</em>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="p-grid2 mt">
+    <div>
+      <h3 class="sub">Pul qayerga ketmoqda?</h3>
+      {% if cats %}
+      <div class="donut-row">
+        <div class="donut" style="background:{{ cats_donut }}"><span><small>Jami</small><b>{{ report.expense|num }}</b></span></div>
+        <ul class="legend-list">
+          {% for c in cats %}<li><span class="cat-ico" style="--c:{{ c.color }}"><svg class="ic"><use href="#i-{{ c.icon }}"/></svg></span>
+            <span class="ll-name">{{ c.label }}<small>{{ c.count }} ta · {{ c.amount|money:u.currency }}</small></span><b>{{ c.pct }}%</b></li>{% endfor %}
+        </ul>
+      </div>
+      {% else %}<p class="p-muted">30 kunda xarajat yozilmagan</p>{% endif %}
+    </div>
+    <div>
+      <h3 class="sub">Zarur · Kerak · Havas</h3>
+      {% if needs %}
+      <div class="stack-bar">{% for n in needs %}<i style="flex:{{ n.amount }};background:{{ n.color }}" title="{{ n.label }}: {{ n.pct }}%"></i>{% endfor %}</div>
+      <ul class="legend-list compact">
+        {% for n in needs %}<li><span class="dot" style="background:{{ n.color }}"></span><span class="ll-name">{{ n.label }}</span><b>{{ n.amount|money:u.currency }} · {{ n.pct }}%</b></li>{% endfor %}
+      </ul>
+      {% else %}<p class="p-muted">Xarajatlar belgilanmagan</p>{% endif %}
+
+      <h3 class="sub mt">Ilovadagi faollik</h3>
+      <div class="bars xs">
+        {% for a in activity %}<div class="bar" title="{{ a.date|date:'d.m' }}: {{ a.value }} amal"><i class="c-reg" style="height:{{ a.h }}%"></i></div>{% endfor %}
+      </div>
+      <p class="p-muted small">30 kunning {{ active_days }} kunida amal bajargan</p>
+    </div>
+  </div>
 </section>
 
 <div class="p-grid2">
+  {# ---------------------------------------------------------------- oxirgi yozuvlar #}
   <section class="p-card">
-    <div class="p-card-head"><h2>Bu oy</h2></div>
-    <table class="p-table">
-      <tr><td>Daromad {% if month.income_is_planned %}<span class="p-muted">(oylik bo'yicha)</span>{% endif %}</td><td class="r">{{ month.base_income|money:u.currency }}</td></tr>
-      <tr><td>Xarajat</td><td class="r">{{ month.expense|money:u.currency }}</td></tr>
-      <tr><td>Jamg'armaga</td><td class="r">{{ month.saved|money:u.currency }} / {{ month.should_save|money:u.currency }}</td></tr>
-      <tr><td><b>Qolgan pul</b></td><td class="r"><b>{{ month.left|money:u.currency }}</b></td></tr>
-    </table>
+    <div class="p-card-head"><h2>Oxirgi yozuvlar</h2>
+      <span class="p-muted small">{{ totals.expenses_count|num }} xarajat · {{ totals.incomes_count|num }} kirim</span></div>
+    <ul class="entry-list">
+      {% for e in entries %}
+      <li>
+        <span class="cat-ico" style="--c:{{ e.color }}"><svg class="ic"><use href="#i-{{ e.icon }}"/></svg></span>
+        <span class="el-main"><b>{{ e.title }}{% if e.need %} <i class="need-tag" style="background:{{ e.need.1 }}">{{ e.need.0 }}</i>{% endif %}</b>
+          <small>{{ e.date|date:"d.m.Y" }}{% if e.note %} · {{ e.note }}{% endif %}</small></span>
+        <b class="el-amt {{ e.kind }}">{{ e.sign }}{{ e.amount|num }}</b>
+      </li>
+      {% empty %}<li class="p-muted">Hali yozuv yo'q</li>{% endfor %}
+    </ul>
   </section>
-  <section class="p-card">
-    <div class="p-card-head"><h2>Hamma vaqt</h2></div>
-    <table class="p-table">
-      <tr><td>Kirimlar ({{ totals.incomes_count }} ta)</td><td class="r">{{ totals.income|money:u.currency }}</td></tr>
-      <tr><td>Xarajatlar ({{ totals.expenses_count }} ta)</td><td class="r">{{ totals.expense|money:u.currency }}</td></tr>
-      <tr><td>Jamg'arma: qo'riqchi / o'sadigan</td><td class="r">{{ savings.guard|money:u.currency }} / {{ savings.grow|money:u.currency }}</td></tr>
-      <tr><td>Qarz qoldig'i ({{ debt_summary.count_active }} ta faol)</td><td class="r">{{ debt_summary.remaining|money:u.currency }} · {{ debt_summary.percent }}% to'langan</td></tr>
-    </table>
-  </section>
-</div>
 
-<div class="p-grid2">
+  {# ---------------------------------------------------------------- qarzlar #}
   <section class="p-card">
-    <div class="p-card-head"><h2>Saboqlar</h2></div>
-    <table class="p-table">
-      {% for lesson, state, progress in lessons %}
-      <tr><td>{{ lesson.number }}. {{ lesson.title }}</td>
-        <td class="r">{% if state == 'done' %}<span class="tag green">{{ progress.completed_at|date:"d.m" }}</span>{% elif state == 'open' %}<span class="tag blue">ochiq</span>{% elif state == 'wait' %}<span class="tag">ertaga</span>{% else %}<span class="p-muted">qulf</span>{% endif %}</td></tr>
-      {% if progress.note %}<tr><td colspan="2" class="p-note">«{{ progress.note }}»</td></tr>{% endif %}
-      {% empty %}<tr><td class="p-muted">Saboqlar yo'q</td></tr>{% endfor %}
-    </table>
-    {% if feedback %}
-    <div class="p-card-head mt"><h2>Baholari</h2></div>
-    <table class="p-table">
-      {% for f in feedback %}<tr><td><span class="stars">{% for i in "12345" %}<i class="{% if forloop.counter <= f.rating %}on{% endif %}">★</i>{% endfor %}</span>
-        {% if f.comment %}<br><span class="p-note">«{{ f.comment }}»</span>{% endif %}</td><td class="r p-muted nowrap">{{ f.created_at|date:"d.m.Y" }}</td></tr>{% endfor %}
-    </table>
+    <div class="p-card-head"><h2>Qarzlar</h2>{% if debt_summary.total %}<span class="tag orange">{{ debt_summary.percent }}% to'langan</span>{% endif %}</div>
+    {% for d in debts %}
+    <div class="debt-row {% if not d.remaining %}closed{% endif %}">
+      <div class="dr-head">
+        <span class="cat-ico" style="--c:{% if d.remaining %}#ea580c{% else %}#16a34a{% endif %}"><svg class="ic"><use href="#i-{% if not d.remaining %}check-circle{% elif d.kind == 'credit' %}bank{% elif d.kind == 'nasiya' %}bag{% else %}users{% endif %}"/></svg></span>
+        <span class="el-main"><b>{{ d.name }}</b><small>{{ d.get_kind_display }}{% if d.is_credit %} · {{ d.interest_rate }}% · {{ d.term_months }} oy{% endif %}{% if d.lender %} · {{ d.lender.display_name }} bilan bog'langan{% endif %}</small></span>
+        <b class="el-amt">{% if d.remaining %}{{ d.remaining|money:u.currency }}{% else %}Yopildi{% endif %}</b>
+      </div>
+      <div class="p-progress {% if d.remaining %}orange{% endif %}"><i style="width:{{ d.percent }}%"></i></div>
+    </div>
+    {% empty %}<p class="p-muted">Qarz kiritilmagan</p>{% endfor %}
+    {% if lent %}
+    <h3 class="sub mt">Undan qarz olganlar</h3>
+    {% for d in lent %}
+    <div class="debt-row">
+      <div class="dr-head">
+        <span class="cat-ico" style="--c:#16a34a"><svg class="ic"><use href="#i-users"/></svg></span>
+        <span class="el-main"><b><a href="{% url 'panel:user' d.user.uid %}">{{ d.user.display_name }}</a></b><small>{{ d.name }}</small></span>
+        <b class="el-amt">{{ d.remaining|money:d.user.currency }}</b>
+      </div>
+      <div class="p-progress"><i style="width:{{ d.percent }}%"></i></div>
+    </div>
+    {% endfor %}
     {% endif %}
-  </section>
-  <section class="p-card">
-    <div class="p-card-head"><h2>Qarzlar</h2></div>
-    <table class="p-table">
-      {% for d in debts %}
-      <tr><td>{{ d.name }} <span class="p-muted">{{ d.get_kind_display }}{% if d.is_credit %} · {{ d.interest_rate }}% · {{ d.term_months }} oy{% endif %}</span></td>
-        <td class="r">{{ d.remaining|money:u.currency }} <span class="p-muted">({{ d.percent }}%)</span></td></tr>
-      {% empty %}<tr><td class="p-muted">Qarz kiritilmagan</td></tr>{% endfor %}
-    </table>
     {% if recurring %}
-    <div class="p-card-head mt"><h2>Majburiy xarajatlar</h2></div>
-    <table class="p-table">
-      {% for r in recurring %}<tr><td>{{ r.name }} <span class="p-muted">har oy {{ r.day }}-kuni</span></td><td class="r">{{ r.amount|money:u.currency }}</td></tr>{% endfor %}
-    </table>
+    <h3 class="sub mt">Majburiy xarajatlar</h3>
+    <ul class="legend-list compact">
+      {% for r in recurring %}<li><span class="dot" style="background:#0ea5e9"></span><span class="ll-name">{{ r.name }} <small>har oy {{ r.day }}-kuni</small></span><b>{{ r.amount|money:u.currency }}</b></li>{% endfor %}
+    </ul>
     {% endif %}
   </section>
 </div>
 
 <div class="p-grid2">
+  {# ---------------------------------------------------------------- saboqlar va baholar #}
+  <section class="p-card">
+    <div class="p-card-head"><h2>Saboqlar</h2><span class="tag green">{{ lessons_done }} / {{ lessons|length }}</span></div>
+    <ol class="lesson-steps">
+      {% for lesson, state, progress in lessons %}
+      <li class="{{ state }}">
+        <span class="ls-dot">{% if state == 'done' %}<svg class="ic"><use href="#i-check"/></svg>{% elif state == 'locked' %}<svg class="ic"><use href="#i-lock"/></svg>{% else %}{{ lesson.number }}{% endif %}</span>
+        <span class="el-main"><b>{{ lesson.number }}. {{ lesson.title }}</b>
+          <small>{% if state == 'done' %}Bajarildi · {{ progress.completed_at|date:"d.m.Y" }}{% elif state == 'open' %}Hozir shu saboqda{% else %}Hali ochilmagan{% endif %}</small>
+          {% if progress.note %}<span class="p-note">«{{ progress.note }}»</span>{% endif %}</span>
+      </li>
+      {% empty %}<li class="p-muted">Saboqlar yo'q</li>{% endfor %}
+    </ol>
+    {% if feedback %}
+    <h3 class="sub mt">Baholari</h3>
+    {% for f in feedback %}
+    <div class="fb-row"><span class="stars">{% for i in "12345" %}<i class="{% if forloop.counter <= f.rating %}on{% endif %}">★</i>{% endfor %}</span>
+      <span class="p-muted small">{{ f.created_at|date:"d.m.Y" }}</span>
+      {% if f.comment %}<p class="p-note">«{{ f.comment }}»</p>{% endif %}</div>
+    {% endfor %}
+    {% endif %}
+  </section>
+
+  {# ---------------------------------------------------------------- xabar va izoh #}
   <section class="p-card">
     <div class="p-card-head"><h2>Xabar yuborish (bot orqali)</h2></div>
     <form method="post" action="{% url 'panel:user_action' u.uid %}" class="p-form"
           data-confirm="Xabar {{ u.display_name }} ga bot orqali darhol yuboriladi." data-confirm-title="Xabarni yuborish" data-confirm-ok="Yuborish">{% csrf_token %}
       <input type="hidden" name="action" value="message">
       {{ message_form.text }}
-      <button class="p-btn" type="submit" {% if not u.bot_started %}disabled title="Botni ishga tushirmagan"{% endif %}>Yuborish</button>
+      <button class="p-btn" type="submit" {% if not u.bot_started %}disabled title="Botni ishga tushirmagan"{% endif %}><svg class="ic"><use href="#i-send"/></svg>Yuborish</button>
     </form>
     <div class="p-card-head mt"><h2>Admin izohi</h2></div>
     <form method="post" action="{% url 'panel:user_action' u.uid %}" class="p-form">{% csrf_token %}
@@ -105,17 +221,11 @@
       <textarea name="admin_note" rows="3" maxlength="5000" placeholder="Faqat adminlarga ko'rinadi">{{ u.admin_note }}</textarea>
       <button class="p-btn ghost" type="submit">Saqlash</button>
     </form>
-  </section>
-  <section class="p-card">
-    <div class="p-card-head"><h2>Oxirgi xarajatlar</h2></div>
-    <table class="p-table">
-      {% for e in expenses %}<tr><td>{{ e.get_category_display }}{% if e.need %} <span class="tag">{{ e.get_need_display }}</span>{% endif %}{% if e.note %} <span class="p-muted">{{ e.note }}</span>{% endif %}</td>
-        <td class="r">{{ e.amount|money:u.currency }} <span class="p-muted">{{ e.date|date:"d.m" }}</span></td></tr>
-      {% empty %}<tr><td class="p-muted">Xarajat yo'q</td></tr>{% endfor %}
-    </table>
+    <p class="p-muted small mt">Hamma vaqt: kirim {{ totals.income|money:u.currency }} · xarajat {{ totals.expense|money:u.currency }}<br>UUID <span class="mono">{{ u.uid }}</span></p>
   </section>
 </div>
 
+{# ---------------------------------------------------------------- amallar tarixi #}
 <section class="p-card">
   <div class="p-card-head"><h2>Amallar tarixi</h2><span class="p-muted">{{ log_page.paginator.count|num }} ta</span></div>
   <table class="p-table">
