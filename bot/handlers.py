@@ -4,11 +4,11 @@ import logging
 from django.conf import settings
 from django.utils import timezone
 
-from core import activity
+from core import activity, debtlink
 from core.models import LoginCode, TgUser
 
 from . import entries, messages, reports
-from .telegram import TelegramError
+from .telegram import TelegramError, app_button
 
 log = logging.getLogger("bot")
 
@@ -65,6 +65,8 @@ def handle_message(api, msg):
         api.send(user.tg_id, *entries.start(user, action[4:]))
     elif command == "/start" and arg.startswith("login_"):
         ask_login_confirm(api, user, arg[len("login_"):])
+    elif command == "/start" and arg.startswith("q_"):
+        ask_debt_link(api, user, arg[2:])
     elif command == "/start":
         api.send(user.tg_id, *messages.welcome(user))
         api.send(user.tg_id, messages.menu_hint(), keyboard=messages.main_keyboard())
@@ -103,6 +105,40 @@ def ask_login_confirm(api, user, code):
     ])
 
 
+def ask_debt_link(api, user, token):
+    """Qarz taklifi havolasi: ikkinchi tomondan tasdiq so'raladi (yangi foydalanuvchi shu yerda ro'yxatdan o'tadi)."""
+    try:
+        link = debtlink.open_link(token)
+    except debtlink.LinkError as e:
+        api.send(user.tg_id, f"⏳ {e}")
+        return
+    if link.creator_id == user.pk:
+        api.send(user.tg_id, "Bu havolani o'zingiz yaratgansiz — uni qarz bergan yoki olgan odamga yuboring.")
+        return
+    api.send(user.tg_id, *debtlink.invite_message(link))
+
+
+def debt_link_callback(api, user, data, message):
+    """dl:<token>:y|n — taklifga javob; dp:<to'lov id>:y|n — to'lovni tasdiqlash."""
+    kind, _, rest = data.partition(":")
+    value, _, choice = rest.rpartition(":")
+    try:
+        if kind == "dl":
+            reply = debtlink.accept(user, value) if choice == "y" else debtlink.decline(user, value)
+        elif value.isdigit():
+            reply = debtlink.review_payment(user, int(value), choice == "y")
+        else:
+            return ""
+    except debtlink.LinkError as e:
+        reply = str(e)
+    buttons = None
+    if kind == "dl" and choice == "y" and reply.startswith("✅"):
+        btn = app_button("📒 Qarzlarni ochish", "qarzlar/")
+        buttons = [[btn]] if btn else None
+    _replace(api, user, message, reply, buttons)
+    return reply[:190]
+
+
 def handle_callback(api, cq):
     data = cq.get("data") or ""
     user = _user_for(cq["from"])
@@ -111,6 +147,8 @@ def handle_callback(api, cq):
         answer = "Hisobingiz bloklangan"
     elif data.startswith("login:"):
         answer = confirm_login(api, user, data.split(":", 1)[1], cq.get("message"))
+    elif data.startswith(("dl:", "dp:")):
+        answer = debt_link_callback(api, user, data, cq.get("message"))
     elif data.startswith("r:") and data[2:] in reports.REPORTS and cq.get("message"):
         answer = refresh_report(api, user, data[2:], cq["message"])
     elif data == "x" or data[:2] in ENTRY_CALLBACKS:

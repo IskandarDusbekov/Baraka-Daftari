@@ -38,6 +38,17 @@ class BotAPI:
             params["reply_markup"] = keyboard
         return self.call("sendMessage", **params)
 
+    def send_document(self, chat_id, path, caption="", http_timeout=300):
+        """Faylni hujjat sifatida yuborish (Telegram cheklovi — 50 MB)."""
+        with open(path, "rb") as f:
+            resp = self.session.post(self.base + "sendDocument", timeout=http_timeout,
+                                     data={"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"},
+                                     files={"document": (path.name, f, "application/octet-stream")})
+        data = resp.json()
+        if not data.get("ok"):
+            raise TelegramError(data.get("description", "unknown error"), data.get("error_code"))
+        return data["result"]
+
     def edit(self, chat_id, message_id, text, buttons=None):
         params = {"chat_id": chat_id, "message_id": message_id, "text": text, "parse_mode": "HTML",
                   "disable_web_page_preview": True}

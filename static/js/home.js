@@ -4,7 +4,7 @@
   const { api, esc, som, compact, ic, render, MONTHS } = B;
 
   async function main() {
-    const d = await api('me');
+    const [d, recent] = await Promise.all([api('me'), api(`entries?month=${B.monthKey()}`)]);
     const u = d.user;
     const L = d.lessons;
     const cur = L.current;
@@ -62,11 +62,14 @@
           <div><span>${ic('down')} Xarajat</span><b>${compact(m.expense)}</b></div>
           <div><span>${ic('safe')} Jamg'arma</span><b>${compact(m.saved)}</b></div>
         </div>
-        <div class="bal-actions">
-          <button class="btn white" id="exp-btn">${ic('minus')} Xarajat</button>
-          <a class="btn ghost-white" href="/hamyon/#kirim">${ic('plus')} Kirim</a>
-        </div>
       </section>
+
+      <nav class="quick-grid" aria-label="Tezkor amallar">
+        <button type="button" class="qa" id="exp-btn"><span class="qa-ico orange">${ic('minus')}</span>Xarajat</button>
+        <button type="button" class="qa" id="inc-btn"><span class="qa-ico blue">${ic('plus')}</span>Kirim</button>
+        <a class="qa" href="/jamgarma/"><span class="qa-ico green">${ic('safe')}</span>Jamg'arma</a>
+        <a class="qa" href="/hisobot/"><span class="qa-ico purple">${ic('chart')}</span>Hisobot</a>
+      </nav>
 
       ${roadCard(d.onboarding)}
 
@@ -97,6 +100,13 @@
       ${task}
 
       <section class="card">
+        <div class="card-title"><h3><span class="h-ico gray">${ic('history')}</span> Oxirgi yozuvlar</h3><a class="link small" href="/hamyon/">Hammasi ${ic('right')}</a></div>
+        ${recent.entries.length
+          ? `<ul class="entries">${recent.entries.slice(0, 5).map((e) => B.entryRow(e)).join('')}</ul>`
+          : `<div class="empty"><span class="e-ico">${ic('file')}</span>Bu oy hali yozuv yo'q. «Xarajat» yoki «Kirim» ni bosing.</div>`}
+      </section>
+
+      <section class="card">
         <div class="card-title"><h3>Yutuqlarim</h3><span class="chip gold">${d.badges.filter((b) => b.earned).length}/${d.badges.length}</span></div>
         <div class="badges">
           ${d.badges.map((b) => `<div class="badge ${b.earned ? 'on' : 'off'}"><span class="bi">${ic(b.icon)}</span>${esc(b.title)}</div>`).join('')}
@@ -104,6 +114,7 @@
       </section>`);
 
     page.querySelector('#exp-btn').onclick = () => B.expenseSheet(main);
+    page.querySelector('#inc-btn').onclick = () => B.incomeSheet(u.save_percent, main);
     const setupBtn = page.querySelector('#setup-btn');
     if (setupBtn) setupBtn.onclick = () => B.incomeSetupSheet(u, main);
     const saveBtn = page.querySelector('#save-btn');

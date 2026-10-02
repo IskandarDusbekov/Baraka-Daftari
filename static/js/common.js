@@ -710,10 +710,92 @@
     });
   }
 
-  function expenseSheet(after) {
-    const body = openSheet(`<h2>${ic('receipt')} Xarajat qo'shish</h2>${expenseFormHtml()}`);
+  function expenseSheet(after, defaultDate) {
+    const body = openSheet(`<h2>${ic('receipt')} Xarajat qo'shish</h2>${expenseFormHtml(defaultDate)}`);
     bindExpenseForm(body, async () => { closeSheet(true); if (after) await after(); });
     setTimeout(() => body.querySelector('[data-exp="amount"]').focus(), 350);
+  }
+
+  const SOURCES = { salary: 'Oylik maosh', extra: "Qo'shimcha", business: 'Biznes / savdo', other: 'Boshqa' };
+
+  /** Kirim yozish oynasi: jonli "o'zingizga X%" hisobi, saqlangach darhol "o'zingizga to'lang" oynasi */
+  function incomeSheet(percent, after, defaultDate) {
+    const p = percent || 0;
+    const body = openSheet(`
+      <h2>${ic('up')} Kirim yozish</h2>
+      <label class="field money"><input class="input" id="inc-amt" inputmode="numeric" placeholder="${ph('big')}" autocomplete="off"></label>
+      ${p ? `<div class="calc-result" id="inc-calc" hidden>
+        <div><span>O'zingizga (${p}%)</span><b id="inc-self">0</b></div>
+        <div class="rest"><span>Qolgani</span><b id="inc-rest">0</b></div>
+      </div>` : ''}
+      <div class="form-grid mt">
+        <label class="field"><span>Manba</span>
+          <select class="input" id="inc-src">${Object.entries(SOURCES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
+        <label class="field"><span>Sana</span><input class="input" type="date" id="inc-date" value="${defaultDate || todayISO()}" max="${todayISO()}"></label>
+      </div>
+      <button class="btn big" id="inc-go">${ic('plus')} Kirimni saqlash</button>`);
+    const $ = (s) => body.querySelector(s);
+    const val = bindMoney($('#inc-amt'), (v) => {
+      if (!p) return;
+      const self = Math.floor((v * p) / 100);
+      $('#inc-calc').hidden = !v;
+      $('#inc-self').textContent = som(self);
+      $('#inc-rest').textContent = som(v - self);
+    });
+    $('#inc-go').onclick = (ev) => withBusy(ev.currentTarget, async () => {
+      const amount = val();
+      if (!amount) { toast('Kirim summasini kiriting', true); return; }
+      try {
+        const r = await api('incomes', { method: 'POST', body: { amount, source: $('#inc-src').value, date: $('#inc-date').value } });
+        haptic('success');
+        saveSheet(r.suggested_saving, r.income.id, amount, after);
+      } catch (e) { toast(e.message, true); }
+    });
+    setTimeout(() => $('#inc-amt').focus(), 350);
+  }
+
+  /** Telegram'da ulashish oynasi (Mini App ichida — Telegram'ning o'zida, brauzerda — yangi oynada) */
+  function share(url, text) {
+    const link = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text || '')}`;
+    if (tg && tg.openTelegramLink && tg.initData) tg.openTelegramLink(link);
+    else window.open(link, '_blank', 'noopener');
+  }
+
+  /** Havolani ulashish varag'i: Telegram orqali yuborish + nusxa olish */
+  function shareSheet(title, hint, url, text, after) {
+    const body = openSheet(`
+      <div class="celebrate"><div class="big-ico blue">${ic('send')}</div></div>
+      <h2 class="center">${esc(title)}</h2>
+      <p class="center muted">${hint}</p>
+      <div class="share-link"><span>${esc(url)}</span></div>
+      <button class="btn big" id="sh-go">${ic('send')} Telegram orqali yuborish</button>
+      <button class="btn ghost block" id="sh-copy">Havolani nusxalash</button>`, after);
+    body.querySelector('#sh-go').onclick = () => share(url, text);
+    body.querySelector('#sh-copy').onclick = async () => {
+      try { await navigator.clipboard.writeText(`${text}\n${url}`); toast('Nusxalandi'); } catch (e) { toast('Nusxalab bo\'lmadi — havolani qo\'lda belgilang', true); }
+    };
+  }
+
+  const dayLabel = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${d}-${MONTHS[m - 1].toLowerCase()}`; };
+
+  /** Tarixdagi bitta yozuv qatori (Hamyon — tahrir/o'chirish bilan, bosh sahifa — faqat ko'rish) */
+  function entryRow(e, actions) {
+    let icon; let cls; let sign; let title; let color;
+    if (e.type === 'income') { icon = 'up'; cls = 'plus'; sign = '+'; title = SOURCES[e.source] || e.label; color = '#2563eb'; }
+    else if (e.type === 'saving') {
+      const b = BUCKETS[e.bucket] || BUCKETS.guard;
+      const out = e.amount < 0;
+      icon = b.icon; cls = out ? 'plus' : 'save'; sign = out ? '←' : '→'; color = b.color;
+      title = out ? `${b.label}dan olindi` : `${b.label}ga`;
+    }
+    else { const c = CATS[e.category] || CATS.other; icon = c.icon; cls = 'minus'; sign = '−'; title = c.label; color = c.color; }
+    const editable = actions && e.type !== 'saving';
+    return `<li class="entry ${editable ? 'editable' : ''}" ${editable ? `data-edit="${e.type}/${e.id}"` : ''}>
+      <span class="e-icon" style="--c:${color}">${ic(icon)}</span>
+      <span class="e-main"><b>${esc(title)}${e.need ? `<span class="need-tag" style="background:${NEEDS[e.need].color}">${NEEDS[e.need].label}</span>` : ''}</b><small>${dayLabel(e.date)}${e.note ? ` · ${esc(e.note)}` : ''}</small></span>
+      <span class="e-amt ${cls}">${sign}${num(Math.abs(e.amount))}</span>
+      ${actions ? `<button class="e-del" data-del="${e.type}/${e.id}" aria-label="O'chirish">${ic('trash')}</button>` : ''}
+    </li>`;
   }
 
   // ------------------------------------------------------------------ MB kursi
@@ -829,7 +911,7 @@
 
   window.B = {
     compactMoney,
-    saveSheet, incomeSetupSheet, expenseSheet, expenseFormHtml, bindExpenseForm, CATS, NEEDS, BUCKETS,
+    saveSheet, incomeSetupSheet, expenseSheet, incomeSheet, entryRow, share, shareSheet, SOURCES, expenseFormHtml, bindExpenseForm, CATS, NEEDS, BUCKETS,
     tg, IN_TG, CFG, MONTHS, DISCLAIMER,
     esc, num, som, digits, compact, pad, todayISO, monthKey, monthLabel, sleep, ic, haptic,
     CURRENCIES, setCurrency, curSign, ph, otherCurrency, get currency() { return currency; },

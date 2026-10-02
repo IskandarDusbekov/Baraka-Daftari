@@ -1,6 +1,7 @@
 import datetime as dt
 import hashlib
 import hmac
+import io
 import json
 import time
 from unittest import mock
@@ -13,7 +14,7 @@ from django.utils import timezone
 from bot import handlers, reminders
 from core import services
 from core.auth import make_api_token, verify_webapp_init_data
-from core.models import Debt, Lesson, LessonProgress, LoginCode, TgUser
+from core.models import Debt, DebtLink, DebtPayment, Lesson, LessonProgress, LoginCode, TgUser
 from core.saboq_data import load_saboqlar
 
 
@@ -1162,6 +1163,40 @@ class AdminsAndBackupTests(BaseTestCase):
         self.client.post("/boshqaruv/zaxira/", {"action": "delete", "name": name})
         self.assertEqual(backup.list_backups(), [])
 
+    @override_settings(BACKUP_CHAT_IDS=[111, 222], BOT_TOKEN="test-token")
+    def test_backup_sent_to_telegram(self):
+        from django.core.management import call_command
+
+        from core import backup
+        with mock.patch("bot.telegram.BotAPI.send_document") as send:
+            call_command("send_backup", stdout=io.StringIO())
+        self.assertEqual([c.args[0] for c in send.call_args_list], [111, 222])
+        self.assertEqual(len(backup.list_backups()), 1)
+        # panel tugmasi ham yuboradi; begona nom o'tmaydi
+        self.client.login(username="boss", password="Kuchli-parol-2026")
+        self.assertContains(self.client.get("/boshqaruv/zaxira/"), 'value="telegram"')
+        name = backup.list_backups()[0]["name"]
+        with mock.patch("bot.telegram.BotAPI.send_document") as send:
+            self.client.post("/boshqaruv/zaxira/", {"action": "telegram", "name": name})
+            self.client.post("/boshqaruv/zaxira/", {"action": "telegram", "name": "../.env"})
+        self.assertEqual(send.call_count, 2)
+
+    @override_settings(BACKUP_CHAT_IDS=[111], BOT_TOKEN="test-token")
+    def test_backup_failure_alerts_admin(self):
+        from django.core.management import CommandError, call_command
+
+        from bot.telegram import TelegramError
+        with mock.patch("bot.telegram.BotAPI.send_document", side_effect=TelegramError("chat not found")), \
+                mock.patch("bot.telegram.BotAPI.send") as alert:
+            with self.assertRaises(CommandError):
+                call_command("send_backup", stdout=io.StringIO())
+        self.assertIn("chat not found", alert.call_args[0][1])
+
+    def test_send_backup_requires_config(self):
+        from django.core.management import CommandError, call_command
+        with override_settings(BACKUP_CHAT_IDS=[]), self.assertRaises(CommandError):
+            call_command("send_backup", stdout=io.StringIO())
+
     def test_blocked_user_cannot_use_bot(self):
         api = mock.Mock()
         TgUser.objects.create(tg_id=777, first_name="X", is_active=False, bot_started=True)
@@ -1175,3 +1210,98 @@ class AdminsAndBackupTests(BaseTestCase):
         TgUser.objects.create(tg_id=888, first_name="Y")
         for url in ("/admin/", "/admin/core/tguser/", "/admin/core/expense/", "/admin/core/feedback/"):
             self.assertEqual(self.client.get(url).status_code, 200, url)
+
+
+@override_settings(BOT_TOKEN=BOT_TOKEN, BOT_USERNAME="baraka_test_bot")
+class DebtLinkTests(ApiTestCase):
+    """Qarzni bog'lash: havola → botda tasdiq → to'lov tasdig'i → uzish."""
+
+    def setUp(self):
+        super().setUp()
+        self.user.bot_started = True
+        self.user.save()
+        self.vali = TgUser.objects.create(tg_id=2002, first_name="Vali", bot_started=True)
+        self.vali_auth = {"HTTP_AUTHORIZATION": f"Bearer {make_api_token(self.vali)}"}
+        notify = mock.patch("core.debtlink.notify", return_value=True)
+        self.notify = notify.start()
+        self.addCleanup(notify.stop)
+
+    def bot(self, tg_from, text=None, data=None):
+        api = mock.Mock()
+        if text is not None:
+            update = {"message": {"chat": {"type": "private", "id": tg_from["id"]}, "from": tg_from, "text": text}}
+        else:
+            update = {"callback_query": {"id": "1", "from": tg_from, "data": data}}
+        handlers.handle_update(api, update)
+        return api
+
+    def token_of(self, url):
+        return url.split("start=q_")[1]
+
+    def test_borrower_links_debt_and_lender_reviews_payment(self):
+        debt = self.post("/api/debts", {"name": "Validan", "kind": "personal", "total": 1_000_000}).json()["debt"]
+        self.assertTrue(debt["linkable"])
+        r = self.post(f"/api/debts/{debt['id']}/invite").json()
+        self.assertTrue(r["url"].startswith("https://t.me/baraka_test_bot?start=q_"))
+        token = self.token_of(r["url"])
+
+        # O'zi bosolmaydi; Vali botda ochadi va tasdiqlaydi
+        self.assertIn("o'zingiz", self.bot({"id": 1001, "first_name": "Ali"}, data=f"dl:{token}:y").send.call_args[0][1])
+        api = self.bot({"id": 2002, "first_name": "Vali"}, text=f"/start q_{token}")
+        self.assertIn("1 000 000", api.send.call_args[0][1])
+        self.bot({"id": 2002, "first_name": "Vali"}, data=f"dl:{token}:y")
+        self.assertEqual(Debt.objects.get(pk=debt["id"]).lender, self.vali)
+        # Havola ikkinchi marta ishlamaydi
+        api = self.bot({"id": 3003, "first_name": "Begona"}, text=f"/start q_{token}")
+        self.assertIn("eskirgan", api.send.call_args[0][1])
+
+        # Bog'langan qarz: o'chirib ham, summasini o'zgartirib ham bo'lmaydi
+        self.assertEqual(self.client.delete(f"/api/debts/{debt['id']}", **self.auth).status_code, 400)
+        self.assertEqual(self.post(f"/api/debts/{debt['id']}", {"total": 10}).status_code, 400)
+
+        # To'lov → Vali'ga so'rov; Vali'ning ro'yxatida ko'rinadi
+        self.post(f"/api/debts/{debt['id']}/pay", {"amount": 300_000})
+        lent = self.client.get("/api/debts", **self.vali_auth).json()["lent"]
+        self.assertEqual(lent[0]["borrower"], "Ali")
+        self.assertEqual(lent[0]["paid"], 300_000)
+        pay_id = lent[0]["pending"][0]["id"]
+        # Ali o'z to'lovini o'zi tasdiqlay olmaydi
+        self.assertEqual(self.post(f"/api/debts/payments/{pay_id}/review", {"ok": True}).status_code, 400)
+        # Vali rad etadi → summa qarzga qaytadi
+        self.bot({"id": 2002, "first_name": "Vali"}, data=f"dp:{pay_id}:n")
+        self.assertEqual(Debt.objects.get(pk=debt["id"]).paid, 0)
+        self.assertEqual(DebtPayment.objects.get(pk=pay_id).status, "rejected")
+
+        # Uzish: endi o'chirsa bo'ladi
+        r = self.client.post(f"/api/debts/{debt['id']}/unlink", "{}", content_type="application/json", **self.vali_auth)
+        self.assertEqual(r.status_code, 200)
+        self.assertIsNone(Debt.objects.get(pk=debt["id"]).lender)
+        self.assertEqual(self.client.delete(f"/api/debts/{debt['id']}", **self.auth).status_code, 200)
+
+    def test_lender_invite_creates_debt_for_borrower(self):
+        r = self.client.post("/api/debts/lend", json.dumps({"note": "Ali, telefon uchun", "amount": 500_000}),
+                             content_type="application/json", **self.vali_auth).json()
+        self.assertEqual(len(self.client.get("/api/debts", **self.vali_auth).json()["invites"]), 1)
+        token = self.token_of(r["url"])
+        # Yangi odam (hali ro'yxatdan o'tmagan) ham havola orqali kirib tasdiqlay oladi
+        self.bot({"id": 4004, "first_name": "Yangi"}, text=f"/start q_{token}")
+        self.bot({"id": 4004, "first_name": "Yangi"}, data=f"dl:{token}:y")
+        newbie = TgUser.objects.get(tg_id=4004)
+        debt = newbie.debts.get()
+        self.assertEqual((debt.total, debt.lender), (500_000, self.vali))
+        data = self.client.get("/api/debts", **self.vali_auth).json()
+        self.assertEqual((len(data["lent"]), data["invites"]), (1, []))
+
+    def test_decline_and_rules(self):
+        credit = Debt.objects.create(user=self.user, name="Bank", kind="credit", total=100)
+        self.assertEqual(self.post(f"/api/debts/{credit.pk}/invite").status_code, 400)
+        r = self.client.post("/api/debts/lend", json.dumps({"note": "Ali", "amount": 1000}),
+                             content_type="application/json", **self.vali_auth).json()
+        token = self.token_of(r["url"])
+        self.bot({"id": 1001, "first_name": "Ali"}, data=f"dl:{token}:n")
+        self.assertEqual(DebtLink.objects.get(token=token).status, "declined")
+        self.assertFalse(self.user.debts.filter(lender=self.vali).exists())
+        # Begona odam boshqa qarzni bog'lay olmaydi / ko'ra olmaydi
+        other = Debt.objects.create(user=self.vali, name="X", kind="personal", total=100)
+        self.assertEqual(self.post(f"/api/debts/{other.pk}/invite").status_code, 404)
+        self.assertEqual(self.post(f"/api/debts/{other.pk}/unlink").status_code, 404)

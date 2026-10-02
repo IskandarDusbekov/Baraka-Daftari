@@ -181,6 +181,29 @@ sudo -u postgres /usr/local/bin/baraka-backup && ls -lh /var/backups/baraka
 
 Zaxiradan tiklash: `sudo -u postgres pg_restore -d baraka --clean /var/backups/baraka/baraka-YYYY-MM-DD.dump`
 
+### Nusxani har kecha Telegram'ga yuborish
+
+Server buzilsa, undagi nusxalar ham yo'qoladi — shuning uchun nusxa har kecha bot orqali sizga yuboriladi.
+
+1. Botga `/start` yozing (bot sizga xabar yubora olishi uchun).
+2. Telegram ID'ingizni oling: admin panel → Foydalanuvchilar → o'zingiz → «Telegram ID».
+3. `.env` ga yozing va tekshiring:
+
+```bash
+echo "BACKUP_CHAT_IDS=123456789" >> /srv/baraka/.env
+systemctl restart baraka-web
+sudo -u baraka /srv/baraka/.venv/bin/python /srv/baraka/manage.py send_backup
+```
+
+4. Fayl Telegram'ga kelgan bo'lsa, har kecha 03:40 da yuboriladigan qilib qo'ying:
+
+```bash
+(sudo -u baraka crontab -l 2>/dev/null; echo "40 3 * * * cd /srv/baraka && .venv/bin/python manage.py send_backup >/dev/null") | sudo -u baraka crontab -
+sudo -u baraka crontab -l
+```
+
+Xato bo'lsa (nusxa olinmasa yoki yuborilmasa), bot o'sha chatga xabar yozadi.
+
 ## 11. Google Search Console
 
 1. `https://baraka.uz/boshqaruv/seo/` → sayt manzili, sarlavha, tavsifni to'ldiring.

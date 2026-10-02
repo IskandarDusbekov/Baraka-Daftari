@@ -12,7 +12,13 @@
 <section class="p-card">
   <ul class="p-list">
     <li>Nusxada <b>barcha ma'lumotlar</b> bor: foydalanuvchilar, xarajatlar, qarzlar, saboqlar. Faylni hech kimga bermang va xavfsiz joyda saqlang.</li>
-    <li>Bu yerda oxirgi <b>{{ keep }} ta</b> nusxa saqlanadi, eskilari o'zi o'chadi. Serverda alohida <b>har kecha soat 3:30 da</b> avtomatik zaxira olinadi (14 kun saqlanadi).</li>
+    <li>Bu yerda oxirgi <b>{{ keep }} ta</b> nusxa saqlanadi, eskilari o'zi o'chadi.</li>
+    {% if telegram %}
+    <li>Telegram: <b>yoqilgan</b>. Har kecha nusxa avtomatik Telegram'ingizga keladi — server buzilsa ham nusxa qo'lingizda qoladi. Istalgan nusxani «Telegram'ga» tugmasi bilan hozir yuborish mumkin.</li>
+    {% else %}
+    <li>Telegram: <b>o'chiq</b>. Nusxalar faqat shu serverda turibdi — server buzilsa, ular ham yo'qoladi.
+      Yoqish uchun serverdagi <code>.env</code> ga Telegram ID'ingizni yozing: <code>BACKUP_CHAT_IDS=123456789</code> (ID — Foydalanuvchilar sahifasida, o'zingizni oching).</li>
+    {% endif %}
     <li>Baza turi: <b>{{ engine }}</b>.</li>
   </ul>
 </section>
@@ -28,6 +34,11 @@
         <td class="r nowrap">{{ b.size|filesizeformat }}</td>
         <td class="r nowrap">
           <a class="p-btn sm" href="{% url 'panel:backup_download' b.name %}">Yuklab olish</a>
+          {% if telegram %}
+          <form method="post" class="inline" data-confirm="{{ b.name }} sozlangan Telegram chat(lar)ga yuboriladi." data-confirm-title="Telegram'ga yuborish" data-confirm-ok="Yuborish">
+            {% csrf_token %}<input type="hidden" name="action" value="telegram"><input type="hidden" name="name" value="{{ b.name }}">
+            <button class="p-btn ghost sm">Telegram'ga</button></form>
+          {% endif %}
           <form method="post" class="inline" data-confirm="{{ b.name }} butunlay o'chiriladi." data-confirm-title="Nusxani o'chirish" data-confirm-ok="O'chirish" data-danger>
             {% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="name" value="{{ b.name }}">
             <button class="p-btn ghost sm">O'chirish</button></form>

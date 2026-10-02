@@ -8,7 +8,7 @@ from django.contrib import admin, messages
 from django.db.models import F
 
 from .models import (
-    ActivityLog, Broadcast, Debt, DebtPayment, Expense, Feedback, Income, Lesson, LessonProgress, RecurringExpense,
+    ActivityLog, Broadcast, Debt, DebtLink, DebtPayment, Expense, Feedback, Income, Lesson, LessonProgress, RecurringExpense,
     Saving, TgUser,
 )
 
@@ -96,10 +96,21 @@ class DebtPaymentInline(admin.TabularInline):
 
 @admin.register(Debt)
 class DebtAdmin(FastAdmin):
-    list_display = ("name", "user", "kind", "total", "paid", "monthly_payment", "closed_at")
+    list_display = ("name", "user", "lender", "kind", "total", "paid", "monthly_payment", "closed_at")
     list_filter = ("kind",)
     search_fields = ("name", "user__username", "user__tg_id")
+    raw_id_fields = ("user", "lender")
+    list_select_related = ("user", "lender")
     inlines = [DebtPaymentInline]
+
+
+@admin.register(DebtLink)
+class DebtLinkAdmin(FastAdmin):
+    list_display = ("creator", "direction", "amount", "note", "status", "used_by", "created_at")
+    list_filter = ("direction", "status")
+    raw_id_fields = ("creator", "debt", "used_by")
+    list_select_related = ("creator", "used_by")
+    readonly_fields = ("token",)
 
 
 @admin.register(Income)

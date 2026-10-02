@@ -20,7 +20,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from . import activity, rates, services
+from . import activity, debtlink, rates, services
 from .auth import make_api_token, user_from_request, verify_webapp_init_data
 from .models import (
     Debt, DebtPayment, Expense, Feedback, Income, LessonProgress, LoginCode, RecurringExpense, Saving,
@@ -173,6 +173,9 @@ def debt_json(d):
         "id": d.id, "name": d.name, "kind": d.kind, "kind_label": d.get_kind_display(),
         "total": d.total, "paid": d.paid, "remaining": d.remaining, "percent": d.percent,
         "monthly_payment": d.monthly_payment, "closed": d.remaining == 0, "credit": None,
+        "lender": debtlink.first_name(d.lender) if d.lender_id else None,
+        "pending": sum(1 for p in d.payments.all() if p.status == "pending") if d.lender_id else 0,
+        "linkable": d.kind in debtlink.LINKABLE_KINDS and not d.lender_id and d.remaining > 0,
     }
     if d.is_credit:
         data["credit"] = services.debt_credit_calc(d)
@@ -789,10 +792,16 @@ def debts(request):
         activity.log(user, "debt_add", kind=kind, amount=total)
         return JsonResponse({"debt": debt_json(debt)})
 
-    items = sorted(user.debts.all(), key=lambda x: (x.remaining == 0, x.remaining, x.id))
+    items = sorted(user.debts.select_related("lender").prefetch_related("payments"),
+                   key=lambda x: (x.remaining == 0, x.remaining, x.id))
+    lent = sorted(user.lent_debts.select_related("user").prefetch_related("payments"),
+                  key=lambda x: (x.remaining == 0, -x.remaining, x.id))
     return JsonResponse({
         "debts": [debt_json(x) for x in items],
         "summary": services.debts_summary(user),
+        "lent": [debtlink.lent_json(x) for x in lent],
+        "invites": debtlink.open_invites(user),
+        "can_link": bool(settings.BOT_USERNAME),
     })
 
 
@@ -800,9 +809,13 @@ def debts(request):
 def debt_detail(request, pk):
     debt = get_object_or_404(Debt, pk=pk, user=request.tg_user)
     if request.method == "DELETE":
+        if debt.lender_id:
+            raise ApiError("Bu qarz bog'langan. Avval bog'lanishni uzing — ikkinchi tomon xabar oladi")
         debt.delete()
         return JsonResponse({"ok": True})
     d = request.data
+    if debt.lender_id and "total" in d and amount_from(d, "total") != debt.total:
+        raise ApiError("Bog'langan qarzning summasini o'zgartirib bo'lmaydi. Avval bog'lanishni uzing")
     if "name" in d:
         debt.name = text_from(d, "name", 100) or debt.name
     if debt.is_credit or (debt.kind == "credit" and d.get("principal")):
@@ -843,13 +856,76 @@ def debt_pay(request, pk):
         else:
             amount = min(amount, debt.remaining)
             debt.paid += amount
-        DebtPayment.objects.create(debt=debt, amount=amount, date=date_from(request.data))
+        payment = DebtPayment.objects.create(debt=debt, amount=amount, date=date_from(request.data),
+                                             status="pending" if debt.lender_id else "ok")
         just_closed = debt.remaining == 0
         if just_closed:
             debt.closed_at = timezone.now()
         debt.save()
     activity.log(request.tg_user, "debt_close" if just_closed else "debt_pay", amount=amount, debt=debt.name[:40])
+    if debt.lender_id:
+        debtlink.payment_created(payment)
     return JsonResponse({"debt": debt_json(debt), "paid_now": amount, "just_closed": just_closed})
+
+
+# ---------------------------------------------------------------- qarzni bog'lash (core/debtlink.py)
+
+def _link_response(link):
+    url = debtlink.invite_url(link)
+    if not url:
+        raise ApiError("Bot sozlanmagan (BOT_USERNAME)")
+    return JsonResponse({"url": url, "text": debtlink.share_text(link)})
+
+
+@endpoint(["POST"])
+def debt_invite(request, pk):
+    debt = get_object_or_404(Debt, pk=pk, user=request.tg_user)
+    try:
+        return _link_response(debtlink.invite_for_debt(request.tg_user, debt))
+    except debtlink.LinkError as e:
+        raise ApiError(str(e))
+
+
+@endpoint(["POST"])
+def debt_lend(request):
+    amount = amount_from(request.data)
+    note = text_from(request.data, "note", 100)
+    if not note:
+        raise ApiError("Kimga qarz berganingizni yozing")
+    try:
+        return _link_response(debtlink.invite_lent(request.tg_user, amount, note))
+    except debtlink.LinkError as e:
+        raise ApiError(str(e))
+
+
+@endpoint(["DELETE"])
+def debt_invite_cancel(request, pk):
+    try:
+        debtlink.cancel_invite(request.tg_user, pk)
+    except debtlink.LinkError as e:
+        raise ApiError(str(e))
+    return JsonResponse({"ok": True})
+
+
+@endpoint(["POST"])
+def debt_unlink(request, pk):
+    from django.db.models import Q
+    user = request.tg_user
+    debt = get_object_or_404(Debt.objects.select_related("user", "lender"), Q(user=user) | Q(lender=user), pk=pk)
+    try:
+        debtlink.unlink(user, debt)
+    except debtlink.LinkError as e:
+        raise ApiError(str(e))
+    return JsonResponse({"ok": True})
+
+
+@endpoint(["POST"])
+def debt_payment_review(request, pk):
+    try:
+        message = debtlink.review_payment(request.tg_user, pk, bool(request.data.get("ok")))
+    except debtlink.LinkError as e:
+        raise ApiError(str(e))
+    return JsonResponse({"ok": True, "message": message})
 
 
 @endpoint(["GET"])

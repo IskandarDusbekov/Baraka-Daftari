@@ -242,6 +242,9 @@ class Debt(models.Model):
     term_months = models.PositiveSmallIntegerField("Muddat (oy)", default=0)
     balance = models.BigIntegerField("Asosiy qarz qoldig'i", default=0)
     extra_percent = models.PositiveSmallIntegerField("Qo'shib to'lash foizi", default=0)
+    # Qarz bergan odam ham ilovada bo'lsa va tasdiqlasa — u qarzni o'z «Menga qarzdorlar» ro'yxatida ko'radi
+    lender = models.ForeignKey(TgUser, null=True, blank=True, on_delete=models.SET_NULL,
+                               related_name="lent_debts", verbose_name="Qarz bergan (bog'langan)")
     closed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -270,9 +273,14 @@ class Debt(models.Model):
 
 
 class DebtPayment(models.Model):
+    # Bog'langan qarzda to'lov darhol hisobga olinadi, lekin qarz bergan tasdiqlaguncha "pending" turadi;
+    # rad etsa — "rejected" bo'ladi va summa qarzga qaytariladi
+    STATUSES = [("ok", "Hisobga olingan"), ("pending", "Tasdiq kutilmoqda"), ("rejected", "Rad etilgan")]
+
     debt = models.ForeignKey(Debt, on_delete=models.CASCADE, related_name="payments")
     amount = models.BigIntegerField()
     date = models.DateField(default=timezone.localdate)
+    status = models.CharField(max_length=8, choices=STATUSES, default="ok")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -280,6 +288,37 @@ class DebtPayment(models.Model):
         verbose_name = "Qarz to'lovi"
         verbose_name_plural = "Qarz to'lovlari"
         indexes = [models.Index(fields=["debt", "date"], name="debtpay_debt_date_idx")]
+
+
+class DebtLink(models.Model):
+    """Qarzni ikkinchi tomon bilan bog'lash taklifi (bot havolasi: ?start=q_<token>).
+
+    borrowed — taklif qiluvchi qarz olgan: mavjud `debt` ga qarz beruvchi bog'lanadi.
+    lent     — taklif qiluvchi qarz bergan: qabul qilgan odamda yangi qarz yaratiladi.
+    """
+
+    DIRECTIONS = [("borrowed", "Qarz oldim"), ("lent", "Qarz berdim")]
+    STATUSES = [("open", "Kutilmoqda"), ("accepted", "Tasdiqlandi"), ("declined", "Rad etildi"), ("cancelled", "Bekor qilindi")]
+    TTL_DAYS = 7
+
+    token = models.CharField(max_length=32, unique=True)
+    creator = models.ForeignKey(TgUser, on_delete=models.CASCADE, related_name="debt_links")
+    direction = models.CharField(max_length=8, choices=DIRECTIONS)
+    debt = models.ForeignKey(Debt, null=True, blank=True, on_delete=models.CASCADE, related_name="links")
+    amount = models.BigIntegerField(default=0)
+    note = models.CharField("Kimga / izoh", max_length=100, blank=True)
+    status = models.CharField(max_length=10, choices=STATUSES, default="open")
+    used_by = models.ForeignKey(TgUser, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Qarz taklifi"
+        verbose_name_plural = "Qarz takliflari"
+
+    @property
+    def expired(self):
+        return (timezone.now() - self.created_at).days >= self.TTL_DAYS
 
 
 class Lesson(models.Model):
@@ -383,6 +422,9 @@ class ActivityLog(models.Model):
         ("bot_report", "Botda hisobot ko'rdi"),
         ("feedback", "Baho qoldirdi"),
         ("logout_all", "Barcha qurilmalardan chiqdi"),
+        ("debt_invite", "Qarz uchun havola yaratdi"),
+        ("debt_link", "Qarzni tasdiqladi (bog'landi)"),
+        ("debt_unlink", "Qarz bog'lanishini uzdi"),
     ]
 
     user = models.ForeignKey(TgUser, on_delete=models.CASCADE, related_name="activity")

@@ -118,6 +118,9 @@ LOGIN_URL = "/boshqaruv/kirish/"
 
 # Admin panel → Zaxira nusxa: qo'lda olingan nusxalar papkasi (git'ga va nginx'ga kirmaydi)
 BACKUP_DIR = os.getenv("BACKUP_DIR", str(BASE_DIR / "backups"))
+# Zaxira nusxa shu Telegram chat(lar)ga yuboriladi (server buzilsa ham nusxa qo'lingizda qoladi).
+# Telegram ID'ingiz: admin panel → Foydalanuvchilar → o'zingiz. Bir nechta bo'lsa vergul bilan.
+BACKUP_CHAT_IDS = [int(x) for x in os.getenv("BACKUP_CHAT_IDS", "").replace(" ", "").split(",") if x.lstrip("-").isdigit()]
 
 # Django admin manzili: productionda taxmin qilib bo'lmaydigan yo'l qo'ying (ADMIN_URL=maxfiy-yol-7f3k/)
 ADMIN_URL = os.getenv("ADMIN_URL", "admin/").strip("/") + "/"

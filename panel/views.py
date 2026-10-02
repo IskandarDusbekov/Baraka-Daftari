@@ -673,9 +673,18 @@ def backups(request):
             if backup.delete_backup(name):
                 audit(request, "backup_delete", name=name)
                 messages.success(request, f"{name} o'chirildi")
+        elif action == "telegram":
+            name = request.POST.get("name", "")
+            try:
+                sent = backup.send_to_telegram(name)
+                audit(request, "backup_telegram", name=name)
+                messages.success(request, f"{name} Telegram'ga yuborildi ({sent} ta chat)")
+            except backup.BackupError as e:
+                messages.error(request, str(e))
         return redirect("panel:backups")
     return render(request, "panel/backups.html", {
         "nav": "backups", "items": backup.list_backups(), "keep": backup.KEEP,
+        "telegram": backup.telegram_enabled(),
         "engine": "PostgreSQL" if "postgresql" in settings.DATABASES["default"]["ENGINE"] else "SQLite",
     })
 

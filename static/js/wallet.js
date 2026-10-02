@@ -1,9 +1,7 @@
-/* Hamyon: xarajatlar (eng tepada), o'zingga to'la, kirimlar, diagramma, tarix */
+/* Hamyon: oy xulosasi, tezkor tugmalar (xarajat / kirim oynalari), o'zingga to'la, diagramma, tarix */
 (() => {
   'use strict';
-  const { api, esc, num, som, compact, ic, toast, haptic, withBusy, bindMoney, render, MONTHS, CATS } = B;
-
-  const SOURCES = { salary: 'Oylik maosh', extra: "Qo'shimcha", business: 'Biznes / savdo', other: 'Boshqa' };
+  const { api, esc, som, compact, ic, toast, haptic, withBusy, bindMoney, render, CATS, SOURCES } = B;
 
   const params = new URLSearchParams(location.search);
   let month = /^\d{4}-\d{2}$/.test(params.get('oy') || '') ? params.get('oy') : B.monthKey();
@@ -12,7 +10,6 @@
 
   const shiftMonth = (key, delta) => { const [y, m] = key.split('-').map(Number); return B.monthKey(new Date(y, m - 1 + delta, 1)); };
   const lastDayOf = (key) => { const [y, m] = key.split('-').map(Number); return `${key}-${B.pad(new Date(y, m, 0).getDate())}`; };
-  const dayLabel = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${d}-${MONTHS[m - 1].toLowerCase()}`; };
 
   async function main() {
     // 'me' — hisob valyutasi har doim serverdagidek bo'lishi uchun (api() uni o'zi sinxronlaydi)
@@ -38,35 +35,22 @@
         <div class="total left ${t.base_income && t.left < 0 ? 'neg' : ''}"><span>${ic('wallet')} Qoldi</span><b>${t.base_income ? compact(t.left) : '—'}</b></div>
       </section>
 
-      <section class="card" id="xarajat">
-        <div class="card-title"><h3><span class="h-ico orange">${ic('receipt')}</span> Xarajat qo'shish</h3></div>
-        ${B.expenseFormHtml(defaultDate)}
+      <section class="add-row">
+        <button class="add-btn out" id="add-exp"><span>${ic('minus')}</span>Xarajat</button>
+        <button class="add-btn in" id="add-inc"><span>${ic('plus')}</span>Kirim</button>
       </section>
 
       ${t.should_save ? `
-      <section class="card">
-        <div class="card-title"><h3><span class="h-ico green">${ic('safe')}</span> O'zingizga to'lash · ${p}%</h3><span class="chip">${Math.min(savePct, 999)}%</span></div>
+      <section class="card save-mini">
+        <div class="card-title"><h3><span class="h-ico green">${ic('safe')}</span> O'zingizga to'lash</h3><span class="chip">${Math.min(savePct, 999)}%</span></div>
         <div class="progress"><i data-w="${savePct}"></i></div>
-        <p class="muted small mt">${som(t.saved)} / ${som(t.should_save)}</p>
-        ${t.saved < t.should_save
-          ? `<button class="btn sm mt" id="save-rest">${som(t.should_save - t.saved)} ni o'tkazish</button>`
-          : `<p class="chip mt">${ic('check')} Bu oy to'landi</p>`}
+        <div class="save-row">
+          <span class="muted small">${som(t.saved)} / ${som(t.should_save)}</span>
+          ${t.saved < t.should_save
+            ? `<button class="btn sm" id="save-rest">${compact(t.should_save - t.saved)} o'tkazish</button>`
+            : `<span class="chip">${ic('check')} Bu oy to'landi</span>`}
+        </div>
       </section>` : ''}
-
-      <section class="card" id="kirim">
-        <div class="card-title"><h3><span class="h-ico blue">${ic('up')}</span> Kirim yozish</h3></div>
-        <label class="field money"><input class="input" id="inc-amt" inputmode="numeric" placeholder="${B.ph('big')}" autocomplete="off"></label>
-        <div class="calc-result" id="inc-calc" hidden>
-          <div><span>O'zingizga (${p}%)</span><b id="inc-self">0</b></div>
-          <div class="rest"><span>Qolgani</span><b id="inc-rest">0</b></div>
-        </div>
-        <div class="form-grid mt">
-          <label class="field"><span>Manba</span>
-            <select class="input" id="inc-src">${Object.entries(SOURCES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
-          <label class="field"><span>Sana</span><input class="input" type="date" id="inc-date" value="${defaultDate}" max="${B.todayISO()}"></label>
-        </div>
-        <button class="btn big" id="inc-go">${ic('plus')} Kirimni saqlash</button>
-      </section>
 
       <section class="card">
         <div class="card-title"><h3><span class="h-ico purple">${ic('pie')}</span> Pul qayerga ketmoqda?</h3></div>
@@ -103,33 +87,17 @@
       };
     });
 
-    B.bindExpenseForm(page.querySelector('#xarajat'), main);
+    const addExpense = () => B.expenseSheet(main, defaultDate);
+    const addIncome = () => B.incomeSheet(p, main, defaultDate);
+    page.querySelector('#add-exp').onclick = addExpense;
+    page.querySelector('#add-inc').onclick = addIncome;
     const saveRest = page.querySelector('#save-rest');
     if (saveRest) saveRest.onclick = () => B.saveSheet(t.should_save - t.saved, null, 0, main);
 
-    // Kirim + jonli kalkulyator (foydalanuvchi tanlagan foiz bo'yicha)
-    const incVal = bindMoney(page.querySelector('#inc-amt'), (v) => {
-      const self = Math.floor((v * p) / 100);
-      page.querySelector('#inc-calc').hidden = !v;
-      page.querySelector('#inc-self').textContent = som(self);
-      page.querySelector('#inc-rest').textContent = som(v - self);
-    });
-    page.querySelector('#inc-go').onclick = (ev) => withBusy(ev.currentTarget, async () => {
-      const amount = incVal();
-      if (!amount) { toast('Kirim summasini kiriting', true); return; }
-      try {
-        const r = await api('incomes', { method: 'POST', body: {
-          amount, source: page.querySelector('#inc-src').value, date: page.querySelector('#inc-date').value,
-        } });
-        haptic('success');
-        B.saveSheet(r.suggested_saving, r.income.id, amount, main);
-      } catch (e) { toast(e.message, true); }
-    });
-
-    // Bosh sahifadagi "+ Kirim" tugmasidan kelinganda kerakli joyga o'tish
-    if (firstRender && location.hash) {
-      const target = page.querySelector(location.hash);
-      if (target) setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    // Boshqa sahifadagi "+ Kirim" / "Xarajatni yozing" havolalaridan kelinganda kerakli oyna ochiladi
+    if (firstRender) {
+      const open = { '#xarajat': addExpense, '#kirim': addIncome }[location.hash];
+      if (open) { history.replaceState(null, '', location.pathname + location.search); open(); }
     }
     firstRender = false;
   }
@@ -162,7 +130,7 @@
     const show = (chunk, reset) => {
       if (reset) { list.innerHTML = ''; shown = 0; }
       chunk.entries.forEach((e) => { byKey[`${e.type}/${e.id}`] = e; });
-      list.insertAdjacentHTML('beforeend', chunk.entries.map(entryRow).join(''));
+      list.insertAdjacentHTML('beforeend', chunk.entries.map((e) => B.entryRow(e, true)).join(''));
       shown += chunk.entries.length;
       more.hidden = !chunk.has_more;
       page.querySelector('#h-empty').hidden = chunk.count > 0;
@@ -240,25 +208,6 @@
         <div><span class="dot" style="background:${x.color}"></span>${x.label}<b>${som(n[k])} · ${pct(n[k])}%</b></div>`).join('')}
       </div>
     </section>`;
-  }
-
-  function entryRow(e) {
-    let icon; let cls; let sign; let title; let color;
-    if (e.type === 'income') { icon = 'up'; cls = 'plus'; sign = '+'; title = SOURCES[e.source] || e.label; color = '#2563eb'; }
-    else if (e.type === 'saving') {
-      const b = B.BUCKETS[e.bucket] || B.BUCKETS.guard;
-      const out = e.amount < 0;
-      icon = b.icon; cls = out ? 'plus' : 'save'; sign = out ? '←' : '→'; color = b.color;
-      title = out ? `${b.label}dan olindi` : `${b.label}ga`;
-    }
-    else { const c = CATS[e.category] || CATS.other; icon = c.icon; cls = 'minus'; sign = '−'; title = c.label; color = c.color; }
-    const editable = e.type !== 'saving';
-    return `<li class="entry ${editable ? 'editable' : ''}" ${editable ? `data-edit="${e.type}/${e.id}"` : ''}>
-      <span class="e-icon" style="--c:${color}">${ic(icon)}</span>
-      <span class="e-main"><b>${esc(title)}${e.need ? `<span class="need-tag" style="background:${B.NEEDS[e.need].color}">${B.NEEDS[e.need].label}</span>` : ''}</b><small>${dayLabel(e.date)}${e.note ? ` · ${esc(e.note)}` : ''}</small></span>
-      <span class="e-amt ${cls}">${sign}${num(Math.abs(e.amount))}</span>
-      <button class="e-del" data-del="${e.type}/${e.id}" aria-label="O'chirish">${ic('trash')}</button>
-    </li>`;
   }
 
   function donut(cats, total) {

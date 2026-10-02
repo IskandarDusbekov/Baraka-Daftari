@@ -17,6 +17,7 @@
   };
   const duration = (m) => (m >= 12 && m % 12 === 0 ? `${m / 12} yil` : m > 12 ? `${m} oy (${Math.floor(m / 12)} yil ${m % 12} oy)` : `${m} oy`);
   let planExtra = null;
+  let tab = location.hash === '#berganlarim' ? 'lent' : 'mine';
 
   async function main() {
     const [d, plan] = await Promise.all([
@@ -25,25 +26,99 @@
     ]);
     const s = d.summary;
     const targetId = plan.order.length ? plan.order[0].id : null;
+    const monthly = d.debts.filter((x) => !x.closed).reduce((sum, x) => sum + (x.monthly_payment || 0), 0);
+    const lentLeft = d.lent.reduce((sum, x) => sum + x.remaining, 0);
+    const pendingCount = d.lent.reduce((sum, x) => sum + x.pending.length, 0);
+    const showTabs = d.can_link || d.lent.length;
+    if (!showTabs) tab = 'mine';
+
+    const mine = `
+      ${d.debts.map((x) => debtCard(x, x.id === targetId, d.can_link)).join('')}
+      ${!d.debts.length ? `<section class="card empty"><span class="e-ico">${ic('check-circle')}</span>
+        <p>Qarz yo'q — Alhamdulillah!</p></section>` : ''}
+      ${plan.order.length ? planCard(plan) : ''}`;
 
     const page = render(`
-      <section class="card debt-hero">
-        <p style="opacity:.9">Qolgan qarz</p>
-        <h2>${som(s.remaining)}</h2>
+      <section class="balance debt-balance">
+        <p class="bal-label">Qolgan qarzim</p>
+        <h2 class="bal-amount">${som(s.remaining)}</h2>
         <div class="progress white"><i data-w="${s.percent}"></i></div>
-        <p class="small" style="opacity:.95">${s.total ? `${s.percent}% to'landi · ${s.count_active} ta qarz` : "Qarz yo'q"}</p>
+        <p class="bal-hint">${s.total ? `<b>${s.percent}%</b> to'landi · ${s.count_active} ta faol qarz` : "Qarz yo'q — Alhamdulillah!"}</p>
+        <div class="bal-stats">
+          <div><span>Jami</span><b>${compact(s.total)}</b></div>
+          <div><span>To'landi</span><b>${compact(s.paid)}</b></div>
+          <div><span>Oyiga</span><b>${monthly ? compact(monthly) : '—'}</b></div>
+        </div>
       </section>
 
-      <button class="add-card" id="add-debt">${ic('plus')} Qarz qo'shish</button>
+      <nav class="quick-grid three" aria-label="Qarz amallari">
+        <button type="button" class="qa" id="add-debt"><span class="qa-ico orange">${ic('plus')}</span>Qarz oldim</button>
+        ${d.can_link ? `<button type="button" class="qa" id="lend-btn"><span class="qa-ico green">${ic('users')}</span>Qarz berdim</button>` : ''}
+        ${plan.order.length ? `<button type="button" class="qa" id="plan-btn"><span class="qa-ico blue">${ic('target')}</span>Reja</button>` : ''}
+      </nav>
 
-      ${d.debts.map((x) => debtCard(x, x.id === targetId)).join('')}
+      ${showTabs ? `<div class="seg tabs" role="tablist">
+        <button type="button" data-tab="mine" class="${tab === 'mine' ? 'active' : ''}">Mening qarzlarim${d.debts.length ? ` · ${d.debts.length}` : ''}</button>
+        <button type="button" data-tab="lent" class="${tab === 'lent' ? 'active' : ''}">Menga qarzdorlar${pendingCount ? ` <i class="dot-badge">${pendingCount}</i>` : d.lent.length ? ` · ${d.lent.length}` : ''}</button>
+      </div>` : ''}
 
-      ${plan.order.length ? planCard(plan) : ''}
+      ${tab === 'lent' ? lentSection(d.lent, d.invites, lentLeft) : mine}`);
 
-      ${!d.debts.length ? `<section class="card empty"><span class="e-ico">${ic('check-circle')}</span>
-        <p>Qarz yo'q — Alhamdulillah!</p></section>` : ''}`);
-
+    page.querySelectorAll('[data-tab]').forEach((b) => {
+      b.onclick = () => {
+        tab = b.dataset.tab;
+        history.replaceState(null, '', tab === 'lent' ? '#berganlarim' : location.pathname);
+        main().catch((e) => B.errorView(e, main));
+      };
+    });
+    const planBtn = page.querySelector('#plan-btn');
+    if (planBtn) {
+      planBtn.onclick = async () => {
+        if (tab !== 'mine') { tab = 'mine'; await main(); }
+        const card = document.querySelector('.plan-card');
+        if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+    }
+    const emptyLend = page.querySelector('#lend-empty');
+    if (emptyLend) emptyLend.onclick = () => lendSheet();
     page.querySelector('#add-debt').onclick = () => debtForm();
+    const lendBtn = page.querySelector('#lend-btn');
+    if (lendBtn) lendBtn.onclick = () => lendSheet();
+    page.querySelectorAll('[data-link]').forEach((b) => {
+      b.onclick = (ev) => withBusy(ev.currentTarget, async () => {
+        const x = d.debts.find((y) => y.id === Number(b.dataset.link));
+        try {
+          const r = await api(`debts/${x.id}/invite`, { method: 'POST' });
+          B.shareSheet("Qarz bergan odamga yuboring",
+            `Havolani <b>${esc(x.name)}</b> qarzini bergan odamga yuboring. U botda «Tasdiqlayman» ni bossa, to'lovlaringizni u ham ko'rib turadi. Havola 7 kun amal qiladi.`,
+            r.url, r.text);
+        } catch (e) { toast(e.message, true); }
+      });
+    });
+    page.querySelectorAll('[data-review]').forEach((b) => {
+      b.onclick = (ev) => withBusy(ev.currentTarget, async () => {
+        const ok = b.dataset.ok === '1';
+        if (!ok && !(await B.confirmAsk("To'lov rad etilsa, summa qarzga qaytariladi va qarzdorga xabar boradi.", { title: "Pulni olmadingizmi?", ok: 'Rad etish', danger: true }))) return;
+        try {
+          const r = await api(`debts/payments/${b.dataset.review}/review`, { method: 'POST', body: { ok } });
+          toast(r.message);
+          await main();
+        } catch (e) { toast(e.message, true); }
+      });
+    });
+    page.querySelectorAll('[data-unlink]').forEach((b) => {
+      b.onclick = () => unlinkDebt(Number(b.dataset.unlink));
+    });
+    page.querySelectorAll('[data-reshare]').forEach((b) => {
+      const inv = d.invites.find((y) => y.id === Number(b.dataset.reshare));
+      b.onclick = () => B.share(inv.url, inv.text);
+    });
+    page.querySelectorAll('[data-cancel-inv]').forEach((b) => {
+      b.onclick = async () => {
+        if (!(await B.confirmAsk('Havola ishlamay qoladi.', { title: 'Taklifni bekor qilasizmi?', ok: 'Bekor qilish', danger: true }))) return;
+        try { await api(`debts/invites/${b.dataset.cancelInv}`, { method: 'DELETE' }); await main(); } catch (e) { toast(e.message, true); }
+      };
+    });
     const miBtn = page.querySelector('#mi-btn');
     if (miBtn) miBtn.onclick = () => api('me').then((r) => B.incomeSetupSheet(r.user, main)).catch((e) => toast(e.message, true));
     page.querySelectorAll('[data-pay]').forEach((b) => {
@@ -114,41 +189,123 @@
     </section>`;
   }
 
+  // ------------------------------------------------------------------ bog'langan qarzlar
+  async function unlinkDebt(id) {
+    if (!(await B.confirmAsk("Qarz ikkinchi tomonda yangilanmay qoladi va unga xabar boradi. Yozuvlar o'chmaydi.", { title: "Bog'lanishni uzasizmi?", ok: 'Uzish', danger: true }))) return;
+    try {
+      await api(`debts/${id}/unlink`, { method: 'POST' });
+      B.closeSheet(true);
+      toast("Bog'lanish uzildi");
+      await main();
+    } catch (e) { toast(e.message, true); }
+  }
+
+  /** «Menga qarzdorlar»: boshqalar tasdiqlagan, siz bergan qarzlar (faqat ko'rish + to'lovni tasdiqlash) */
+  function lentSection(lent, invites, remaining) {
+    if (!lent.length && !invites.length) {
+      return `<section class="card empty lent-empty">
+        <span class="e-ico">${ic('users')}</span>
+        <p><b>Kimgadir qarz berganmisiz?</b></p>
+        <p class="muted small">Yozib qo'ying va unga havola yuboring. U tasdiqlasa, qancha qaytarganini shu yerda ko'rib turasiz — eslab yurish shart emas.</p>
+        <button class="btn sm mt" id="lend-empty">${ic('plus')} Qarz berdim</button>
+      </section>`;
+    }
+    return `<section class="card">
+      <div class="card-title"><h3><span class="h-ico green">${ic('users')}</span> Menga qarzdorlar</h3>${remaining ? `<span class="chip">${compact(remaining)} qoldi</span>` : ''}</div>
+      ${lent.map((x) => `
+        <div class="lent-item ${x.closed ? 'closed' : ''}">
+          <div class="d-head">
+            <span class="d-icon">${ic(x.closed ? 'check-circle' : 'users')}</span>
+            <div class="d-main"><b>${esc(x.borrower)}</b><span class="muted small">${esc(x.name)}</span></div>
+            <span class="pct-badge">${x.percent}%</span>
+          </div>
+          <div class="progress"><i data-w="${x.percent}"></i></div>
+          <div class="d-nums"><span>Qaytardi: <b>${num(x.paid)}</b></span><span>Qoldi: <b>${num(x.remaining)}</b></span></div>
+          ${x.pending.map((p) => `
+            <div class="pending-pay">
+              <span>${ic('coins')} <b>${som(p.amount)}</b> qaytardim deb yozdi. Oldingizmi?</span>
+              <div class="btn-row"><button class="btn sm" data-review="${p.id}" data-ok="1">Ha, oldim</button>
+                <button class="btn ghost sm" data-review="${p.id}" data-ok="0">Olmadim</button></div>
+            </div>`).join('')}
+          <button class="link small mt" data-unlink="${x.id}">Bog'lanishni uzish</button>
+        </div>`).join('')}
+      ${invites.map((v) => `
+        <div class="lent-item invite">
+          <div class="d-head">
+            <span class="d-icon">${ic('send')}</span>
+            <div class="d-main"><b>${esc(v.note)} · ${som(v.amount)}</b><span class="muted small">Tasdiq kutilmoqda</span></div>
+          </div>
+          <div class="btn-row"><button class="btn ghost sm" data-reshare="${v.id}">${ic('send')} Qayta yuborish</button>
+            <button class="btn ghost sm" data-cancel-inv="${v.id}" style="flex:0 0 auto">Bekor qilish</button></div>
+        </div>`).join('')}
+    </section>`;
+  }
+
+  /** «Qarz berdim»: summa va kimga — havola yaratiladi, u tasdiqlasa qarz uning ro'yxatiga tushadi */
+  function lendSheet() {
+    const body = B.openSheet(`
+      <h2>${ic('users')} Qarz berdim</h2>
+      <p class="muted">Havola yaratamiz — uni qarz olgan odamga yuborasiz. U tasdiqlasa, qarz uning ro'yxatiga qo'shiladi va qaytargan pullarini ko'rib turasiz.</p>
+      <label class="field"><span>Kimga berdingiz?</span><input class="input" id="l-note" maxlength="100" placeholder="Masalan: Jasur, telefon uchun"></label>
+      <label class="field"><span>Qancha?</span><div class="money"><input class="input" id="l-amt" inputmode="numeric" placeholder="${B.ph('mid')}"></div></label>
+      <button class="btn big" id="l-go">${ic('send')} Havola yaratish</button>`);
+    const val = bindMoney(body.querySelector('#l-amt'));
+    body.querySelector('#l-go').onclick = (ev) => withBusy(ev.currentTarget, async () => {
+      const note = body.querySelector('#l-note').value.trim();
+      if (!note) { toast('Kimga berganingizni yozing', true); return; }
+      if (!val()) { toast('Summani kiriting', true); return; }
+      try {
+        const r = await api('debts/lend', { method: 'POST', body: { note, amount: val() } });
+        B.shareSheet('Havola tayyor', `Havolani qarz olgan odamga yuboring (<b>${esc(note)}</b>). Tasdiqlaguncha qarz «Menga qarzdorlar» bo'limida «kutilmoqda» bo'lib turadi. Havola 7 kun amal qiladi.`, r.url, r.text, main);
+      } catch (e) { toast(e.message, true); }
+    });
+  }
+
   // ------------------------------------------------------------------ qarz kartasi
-  function debtCard(x, isTarget) {
+  function debtCard(x, isTarget, canLink) {
     const k = KINDS[x.kind] || KINDS.other;
     const c = x.credit;
     const sub = c ? `${esc(k.label)} · yillik ${+c.interest_rate}% · ${duration(c.term_months)}` : esc(k.label);
     let creditInfo = '';
     if (c && !x.closed) {
       creditInfo = `
-        <div class="d-nums mt"><span>Olingan: <b>${num(c.principal)}</b></span><span>Ustama: <b>${num(Math.max(0, x.total - c.principal))}</b></span></div>
+        <div class="dc-meta"><span>Olingan: <b>${num(c.principal)}</b></span><span>Ustama: <b>${num(Math.max(0, x.total - c.principal))}</b></span></div>
         ${c.extra_percent && c.saved > 0
           ? `<div class="win-line">${ic('sparkles')} +${c.extra_percent}% (${num(c.extra_payment)}/oy) bilan <b>${c.months_with_extra} oyda</b> tugaydi — <b>${B.compactMoney(c.saved)}</b> yutasiz</div>`
           : `<button class="link small mt" data-edit="${x.id}">${ic('sparkles')} Qo'shib to'lasam qancha yutaman?</button>`}`;
     }
-    return `<section class="card debt-card ${x.closed ? 'closed' : ''} ${isTarget ? 'target' : ''}">
-      <div class="d-head">
-        <span class="d-icon">${ic(x.closed ? 'check-circle' : k.icon)}</span>
-        <div class="d-main"><b>${esc(x.name)}</b><span class="muted small">${sub}${isTarget ? ' · birinchi navbatda' : ''}</span></div>
-        <span class="pct-badge">${x.percent}%</span>
+    if (x.closed) {
+      return `<section class="card dcard closed">
+        <div class="dc-top">
+          <span class="d-icon">${ic('check-circle')}</span>
+          <div class="d-main"><b>${esc(x.name)}</b><span class="muted small">Yopildi · ${som(x.total)}</span></div>
+          <button class="icon-btn" data-edit="${x.id}" aria-label="Tahrirlash">${ic('edit')}</button>
+        </div>
+      </section>`;
+    }
+    return `<section class="card dcard ${isTarget ? 'target' : ''}">
+      ${isTarget ? `<span class="dc-flag">${ic('target')} Birinchi navbatda</span>` : ''}
+      <div class="dc-top">
+        <span class="d-icon">${ic(k.icon)}</span>
+        <div class="d-main"><b>${esc(x.name)}</b><span class="muted small">${sub}</span></div>
+        <div class="dc-amt"><b>${compact(x.remaining)}</b><small>qoldi</small></div>
       </div>
-      <div class="progress ${x.closed ? '' : 'orange'}"><i data-w="${x.percent}"></i></div>
-      <div class="d-nums"><span>To'landi: <b>${num(x.paid)}</b></span><span>Jami: <b>${num(x.total)}</b></span></div>
-      ${x.closed ? `<p class="done-box mt">${ic('check-circle')} Bu qarz yopildi. Alhamdulillah!</p>
-        <div class="btn-row mt"><button class="btn ghost sm" data-edit="${x.id}">${ic('edit')} Tahrirlash</button></div>` : `
-      <div class="d-nums mt"><span>Qoldi: <b>${som(x.remaining)}</b></span>${x.monthly_payment ? `<span>Oyiga: <b>${num(x.monthly_payment)}</b></span>` : ''}</div>
+      <div class="progress orange thin"><i data-w="${x.percent}"></i></div>
+      <div class="dc-meta"><span><b>${x.percent}%</b> to'landi · ${num(x.paid)} / ${num(x.total)}</span>${x.monthly_payment ? `<span>Oyiga <b>${compact(x.monthly_payment)}</b></span>` : ''}</div>
+      ${x.lender ? `<p class="link-chip">${ic('users')} <span><b>${esc(x.lender)}</b> bilan bog'langan${x.pending ? ` · ${x.pending} ta to'lov tasdiq kutmoqda` : ''}</span></p>` : ''}
       ${creditInfo}
-      <div class="btn-row mt">
-        <button class="btn orange sm" data-pay="${x.id}">${ic('coins')} To'lov qilish</button>
-        <button class="btn ghost sm" data-edit="${x.id}" style="flex:0 0 auto" aria-label="Tahrirlash">${ic('edit')}</button>
-      </div>`}
+      <div class="dc-actions">
+        <button class="btn orange sm" data-pay="${x.id}">${ic('coins')} To'lov</button>
+        ${canLink && x.linkable ? `<button class="btn ghost sm dc-link" data-link="${x.id}" title="Qarz bergan odamga ulashish">${ic('send')} Bog'lash</button>` : ''}
+        <button class="icon-btn" data-edit="${x.id}" aria-label="Tahrirlash">${ic('edit')}</button>
+      </div>
     </section>`;
   }
 
   // ------------------------------------------------------------------ qo'shish / tahrirlash
   function debtForm(debt) {
     const isEdit = !!debt;
+    const linked = !!(debt && debt.lender);
     const c = debt && debt.credit;
     let kind = debt ? debt.kind : 'credit';
     let paidMode = 'months';
@@ -190,13 +347,15 @@
       </div>
 
       <div id="f-simple" class="stack">
-        <label class="field"><span>Umumiy summa</span><div class="money"><input class="input" id="d-total" inputmode="numeric" placeholder="${B.ph('mid')}" value="${isEdit && !c ? debt.total : ''}"></div></label>
+        <label class="field"><span>Umumiy summa</span><div class="money"><input class="input" id="d-total" inputmode="numeric" placeholder="${B.ph('mid')}" value="${isEdit && !c ? debt.total : ''}" ${linked ? 'disabled' : ''}></div></label>
+        ${linked ? `<p class="muted small">${ic('users')} ${esc(debt.lender)} bilan bog'langan — summani o'zgartirish uchun avval bog'lanishni uzing.</p>` : ''}
         ${isEdit ? '' : `<label class="field"><span>Allaqachon to'langan (ixtiyoriy)</span><div class="money"><input class="input" id="d-paid" inputmode="numeric" placeholder="0"></div></label>`}
         <label class="field"><span>Oylik to'lov (ixtiyoriy)</span><div class="money"><input class="input" id="d-monthly" inputmode="numeric" placeholder="${B.ph('small')}" value="${isEdit && !c ? debt.monthly_payment : ''}"></div></label>
       </div>
 
       <button class="btn orange big" id="d-save">${isEdit ? 'Saqlash' : `${ic('plus')} Qo'shish`}</button>
-      ${isEdit ? `<button class="btn danger block" id="d-del">${ic('trash')} Qarzni o'chirish</button>` : ''}`);
+      ${linked ? `<button class="btn ghost block" id="d-unlink">Bog'lanishni uzish</button>`
+        : isEdit ? `<button class="btn danger block" id="d-del">${ic('trash')} Qarzni o'chirish</button>` : ''}`);
 
     const $ = (sel) => body.querySelector(sel);
     const paidInput = $('#c-paid');
@@ -333,6 +492,7 @@
         await main();
       } catch (e) { toast(e.message, true); }
     });
+    if (linked) $('#d-unlink').onclick = () => unlinkDebt(debt.id);
     const del = $('#d-del');
     if (del) {
       del.onclick = async () => {
@@ -364,6 +524,7 @@
         <button class="btn ghost sm" data-fill="${fullPay}">Hammasini yopish</button>
       </div>
       ${c ? `<p class="tip">${ic('bulb')} Oylik to'lovdan ortiq summa to'liq asosiy qarzga ketadi — bank foizi kamayadi.</p>` : ''}
+      ${debt.lender ? `<p class="tip">${ic('users')} <b>${esc(debt.lender)}</b> ga bot orqali xabar boradi va u pulni olganini tasdiqlaydi.</p>` : ''}
       <button class="btn orange big" id="p-go">To'lovni kiritish</button>`);
     const input = body.querySelector('#p-amt');
     const val = bindMoney(input);
