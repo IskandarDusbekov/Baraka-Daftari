@@ -1,0 +1,18 @@
+{% load static %}<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Internet yo'q — Baraka Daftari</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <main class="page offline-page">
+    <img src="{% static 'img/logo.svg' %}" alt="" class="offline-logo">
+    <h1>Internet aloqasi yo'q</h1>
+    <p class="muted">Ma'lumotlaringiz serverda xavfsiz saqlanadi. Internet qaytgach, sahifani yangilang — hammasi joyida bo'ladi.</p>
+    <button class="btn" type="button" onclick="location.reload()">Qayta urinish</button>
+  </main>
+</body>
+</html>

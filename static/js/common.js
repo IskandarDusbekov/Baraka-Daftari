@@ -199,9 +199,12 @@
       <nav class="menu-grid">${MENU.map(([href, icon, color, title, hint]) => `
         <a href="${href}" class="menu-item ${here === href ? 'on' : ''}">
           <span class="h-ico ${color}">${ic(icon)}</span><span><b>${title}</b><small>${hint}</small></span></a>`).join('')}
+        ${window.BarakaPWA && BarakaPWA.available() ? `<button type="button" class="menu-item" id="menu-install"><span class="h-ico blue">${ic('phone')}</span><span><b>Telefonga o'rnatish</b><small>Ilova kabi ekrandan ochiladi</small></span></button>` : ''}
         <button type="button" class="menu-item" id="menu-share"><span class="h-ico green">${ic('send')}</span><span><b>Do'stga tavsiya qilish</b><small>Telegram orqali havola yuborish</small></span></button>
         <button type="button" class="menu-item" id="menu-rate"><span class="h-ico gold">${ic('star')}</span><span><b>Baho berish</b><small>Ilova sizga yoqdimi?</small></span></button>
       </nav>`);
+    const installBtn = body.querySelector('#menu-install');
+    if (installBtn) installBtn.onclick = () => { closeSheet(true); BarakaPWA.install(); };
     body.querySelector('#menu-share').onclick = () => {
       share(`${location.origin}/`, "Xarajat, jamg'arma va qarzlarni yozib boradigan bepul daftar. Kredit kalkulyatori ham bor — foydali bo'ladi:");
     };

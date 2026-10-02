@@ -28,6 +28,9 @@
   {% endif %}
   <link rel="icon" href="{% static 'img/logo.svg' %}" type="image/svg+xml">
   <link rel="apple-touch-icon" href="{% static 'img/logo-640.png' %}">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Baraka Daftari">
   <script>
     // Kirgan foydalanuvchi yoki Telegram Mini App — to'g'ridan-to'g'ri ilovaga
     (function () {
@@ -68,6 +71,7 @@
         <a class="btn-ink" href="/kirish/">Kirish / Ro'yxatdan o'tish</a>
         <a class="btn-line" href="/kalkulyator/">Kredit kalkulyatori</a>
       </div>
+      <button type="button" class="l-install" data-install hidden><svg class="ic"><use href="#i-phone"/></svg>Telefonga ilova sifatida o'rnatish</button>
       <p class="fine">Bepul · Reklamasiz · Parolsiz, Telegram orqali tasdiqlanadi</p>
       <p class="fine unofficial">Mustaqil loyiha — Abdukarim Mirzayevning rasmiy loyihasi emas.</p>
     </div>
@@ -229,6 +233,7 @@
   {% if bot_username %}<a href="{{ bot_link }}" rel="noopener">@{{ bot_username }}</a>{% endif %}
 </footer>
 {% endwith %}
+<script src="{% static 'js/pwa.js' %}"></script>
 <script src="{% static 'js/landing.js' %}"></script>
 </body>
 </html>

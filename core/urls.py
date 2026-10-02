@@ -1,8 +1,11 @@
 from django.urls import path, re_path
 
-from . import api, seo, views
+from . import api, pwa, seo, views
 
 urlpatterns = [
+    path("manifest.webmanifest", pwa.manifest, name="manifest"),
+    path("sw.js", pwa.service_worker, name="service_worker"),
+    path("oflayn/", pwa.offline, name="offline"),
     path("robots.txt", seo.robots_txt),
     path("sitemap.xml", seo.sitemap_xml),
     re_path(r"^(?P<filename>google[0-9a-f]+\.html|yandex_[0-9a-f]+\.html|BingSiteAuth\.xml)$", seo.verification_file),

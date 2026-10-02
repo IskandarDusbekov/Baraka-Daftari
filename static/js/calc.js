@@ -137,12 +137,15 @@
     haptic('light');
   }
 
+  // URL'dan kelgan qiymat faqat obyektning o'z kaliti bo'lsa — "constructor", "__proto__" kabilar o'tmaydi
+  const own = (obj, key) => typeof key === 'string' && Object.prototype.hasOwnProperty.call(obj, key);
+
   function prefillFromUrl() {
     const q = new URLSearchParams(location.search);
     const t = q.get('h');
-    if (!SHARE_KEYS[t]) return;
+    if (!own(SHARE_KEYS, t)) return;
     tab = t;
-    if (SIGN[q.get('cur')]) cur = q.get('cur');
+    if (own(SIGN, q.get('cur'))) cur = q.get('cur');
     const s = {};
     Object.entries(SHARE_KEYS[t]).forEach(([k, type]) => {
       const v = q.get(k);
@@ -399,7 +402,7 @@
 
   async function main() {
     const hash = location.hash.slice(1);
-    if (RENDER[hash]) tab = hash;
+    if (own(RENDER, hash)) tab = hash;
     prefillFromUrl();
     render(`
       <h1 class="page-title">${ic('calc')} Kalkulyatorlar</h1>

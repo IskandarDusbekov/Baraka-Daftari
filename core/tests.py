@@ -1212,6 +1212,31 @@ class AdminsAndBackupTests(BaseTestCase):
             self.assertEqual(self.client.get(url).status_code, 200, url)
 
 
+class PwaTests(BaseTestCase):
+    def test_manifest(self):
+        r = self.client.get("/manifest.webmanifest")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("application/manifest+json", r["Content-Type"])
+        data = r.json()
+        self.assertEqual(data["display"], "standalone")
+        self.assertTrue(any(i["purpose"] == "maskable" for i in data["icons"]))
+        self.assertTrue(all(i["src"].startswith("/static/") for i in data["icons"]))
+
+    def test_service_worker_never_caches_private_data(self):
+        r = self.client.get("/sw.js")
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("javascript", r["Content-Type"])
+        self.assertEqual(r["Cache-Control"], "no-cache")
+        body = r.content.decode()
+        self.assertIn("'/api/'", body)
+        self.assertIn("/oflayn/", body)
+
+    def test_pages_link_manifest(self):
+        self.assertEqual(self.client.get("/oflayn/").status_code, 200)
+        self.assertContains(self.client.get("/kalkulyator/"), 'rel="manifest"')
+        self.assertContains(self.client.get("/"), "data-install")
+
+
 class TelegramProfileTests(BaseTestCase):
     def test_photo_and_premium(self):
         # Mini App initData: rasm + Premium
