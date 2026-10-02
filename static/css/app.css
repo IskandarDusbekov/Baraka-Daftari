@@ -643,6 +643,15 @@ textarea.input { min-height: 96px; resize: vertical; }
 .order small { color: var(--muted); }
 .tip { background: var(--blue-soft); color: #1e3a8a; border-radius: 14px; padding: 12px 14px; font-size: 14px; margin-top: 12px; }
 
+/* Bosh sahifa: ilovani o'rnatish kartasi */
+.install-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; position: relative; border: 1px solid var(--green-soft); }
+.install-card .ic-text { flex: 1; min-width: 0; }
+.install-card .ic-text b { display: block; font-size: 15px; }
+.install-card .ic-text small { color: var(--muted); font-size: 13px; }
+.install-x { position: absolute; top: 6px; right: 6px; border: 0; background: none; color: #94a3b8; cursor: pointer; padding: 4px; display: grid; }
+.install-x .ic { width: 15px; height: 15px; }
+.install-card .btn { margin-right: 14px; }
+
 /* Oflayn sahifa (PWA, internet yo'q) */
 .offline-page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; }
 .offline-logo { width: 72px; height: 72px; }

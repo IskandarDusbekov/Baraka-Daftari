@@ -55,9 +55,11 @@ main > section { max-width: 1080px; margin: 0 auto; padding: 72px 20px; }
 .btn-line { border: 2px solid var(--ink); color: var(--ink); background: transparent; }
 .btn-line:hover { background: rgba(29, 42, 34, .06); }
 .l-install {
-  display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 8px 2px; border: 0; background: none;
-  font: inherit; font-size: 15px; font-weight: 800; color: var(--green); cursor: pointer; text-decoration: underline; text-underline-offset: 4px;
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 12px 18px; border-radius: 14px;
+  border: 2px solid var(--green); background: rgba(30, 107, 71, .08);
+  font: inherit; font-size: 16px; font-weight: 800; color: var(--green); cursor: pointer;
 }
+.l-install:hover { background: rgba(30, 107, 71, .14); }
 .l-install[hidden] { display: none; }
 .l-install .ic { width: 18px; height: 18px; }
 .fine { margin-top: 14px; font-size: 14px; color: var(--ink-soft); }

@@ -70,6 +70,8 @@
         <a class="qa" href="/hisobot/"><span class="qa-ico purple">${ic('chart')}</span>Hisobot</a>
       </nav>
 
+      ${B.installCardHtml()}
+
       ${roadCard(d.onboarding)}
 
       ${needSave > 0 ? `
@@ -125,8 +127,10 @@
 
     // Birinchi kirish: tanishtiruv (yo'l xaritasi → valyuta → daromad)
     if (!u.accepted_disclaimer) B.onboardingSheet(u, main, d.rate);
-    // 3-marta qaytib kirganda yoki bir necha kundan keyin — baho so'raladi (server hal qiladi)
-    else B.maybeAskRating(d);
+    // 3-marta qaytib kirganda yoki bir necha kundan keyin — baho so'raladi (server hal qiladi);
+    // bu safar baho so'ralmasa — ilovani telefonga o'rnatish taklif qilinadi
+    else if (!B.maybeAskRating(d)) B.maybeAskInstall();
+    B.bindInstallCard(page);
   }
 
   /** «Boshlash yo'li»: yangi foydalanuvchi uchun qadamlar va keyingisi */

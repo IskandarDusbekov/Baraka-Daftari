@@ -336,13 +336,63 @@
 
   /** Bosh sahifa ma'lumoti kelganda: server "so'rash vaqti keldi" desa, biroz kutib baho oynasini ochadi. */
   function maybeAskRating(data) {
-    if (!data || !data.ask_rating || store.get('baraka_rate_asked') === todayISO()) return;
+    if (!data || !data.ask_rating || store.get('baraka_rate_asked') === todayISO()) return false;
     setTimeout(() => {
       // Foydalanuvchi boshqa ish bilan band bo'lsa (varaq yoki oyna ochiq) — bezovta qilmaymiz
       if (modalOpen || $sheetRoot.classList.contains('open') || document.hidden) return;
       store.set('baraka_rate_asked', todayISO());
       ratingModal({ auto: true });
     }, 2500);
+    return true;
+  }
+
+  // ------------------------------------------------------------------ ilovani o'rnatish (PWA)
+  const INSTALL_SNOOZE = 'baraka_install_later';
+  const INSTALL_CARD = 'baraka_install_card_hidden';
+  const DAY = 86400000;
+  const canInstall = () => !!(window.BarakaPWA && BarakaPWA.available());
+
+  function installModal() {
+    const m = openModal(`
+      <div class="modal-ico green">${ic('phone')}</div>
+      <h3>Ilovani telefoningizga o'rnating</h3>
+      <p class="muted">Baraka Daftari ekraningizda alohida ilova bo'lib turadi: bir bosishda ochiladi,
+        brauzer qatorisiz va tezroq ishlaydi. Bepul, xotiradan deyarli joy olmaydi.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-mclose>Keyinroq</button>
+        <button type="button" class="btn" data-ok>${ic('phone')} O'rnatish</button>
+      </div>`, { onClose: (ok) => { if (!ok) store.set(INSTALL_SNOOZE, String(Date.now())); } });
+    m.el.querySelector('[data-ok]').onclick = () => { m.close(true); BarakaPWA.install(); };
+  }
+
+  /** Bosh sahifada: o'rnatilmagan bo'lsa, bir necha soniyadan keyin taklif (rad etsa — 7 kundan keyin yana) */
+  let installAsked = false; // bosh sahifa qayta chizilsa ham, bir ochilishda bir marta
+  function maybeAskInstall() {
+    if (!canInstall() || installAsked) return;
+    installAsked = true;
+    const last = Number(store.get(INSTALL_SNOOZE)) || 0;
+    if (Date.now() - last < 7 * DAY) return;
+    setTimeout(() => {
+      if (!canInstall() || modalOpen || $sheetRoot.classList.contains('open') || document.hidden) return;
+      installModal();
+    }, 4000);
+  }
+
+  /** Bosh sahifadagi doimiy karta (oynani yopgan odam ham keyin o'rnata olsin) */
+  function installCardHtml() {
+    if (!canInstall() || (Date.now() - (Number(store.get(INSTALL_CARD)) || 0) < 30 * DAY)) return '';
+    return `<section class="card install-card" id="install-card">
+      <span class="h-ico green">${ic('phone')}</span>
+      <div class="ic-text"><b>Ilovani telefonga o'rnating</b><small>Ekrandan bir bosishda ochiladi</small></div>
+      <button type="button" class="btn sm" id="install-go">O'rnatish</button>
+      <button type="button" class="install-x" id="install-x" aria-label="Yashirish">${ic('x')}</button>
+    </section>`;
+  }
+  function bindInstallCard(root) {
+    const card = root.querySelector('#install-card');
+    if (!card) return;
+    card.querySelector('#install-go').onclick = () => BarakaPWA.install();
+    card.querySelector('#install-x').onclick = () => { store.set(INSTALL_CARD, String(Date.now())); card.remove(); };
   }
 
   // ------------------------------------------------------------------ formalar
@@ -885,7 +935,8 @@
 
   window.B = {
     compactMoney,
-    saveSheet, incomeSetupSheet, expenseSheet, incomeSheet, entryRow, share, shareSheet, SOURCES, expenseFormHtml, bindExpenseForm, CATS, NEEDS, BUCKETS,
+    saveSheet, incomeSetupSheet, expenseSheet, incomeSheet, entryRow, share, shareSheet, SOURCES,
+    maybeAskInstall, installCardHtml, bindInstallCard, expenseFormHtml, bindExpenseForm, CATS, NEEDS, BUCKETS,
     tg, IN_TG, CFG, MONTHS, DISCLAIMER,
     esc, num, som, digits, compact, pad, todayISO, monthKey, monthLabel, sleep, ic, haptic,
     CURRENCIES, setCurrency, curSign, ph, otherCurrency, get currency() { return currency; },
