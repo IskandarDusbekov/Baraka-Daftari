@@ -257,6 +257,8 @@ def users(request):
         qs = qs.filter(Exists(Feedback.objects.filter(user=OuterRef("pk"))))
     elif status == "loyal":
         qs = qs.filter(visits__gte=10)
+    elif status == "premium":
+        qs = qs.filter(is_premium=True)
     qs = qs.order_by({"seen": "-last_seen", "old": "created_at", "visits": "-visits"}.get(sort, "-created_at"))
     qs = qs.annotate(
         lessons_done=Subquery(

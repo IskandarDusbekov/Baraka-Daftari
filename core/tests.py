@@ -1212,6 +1212,33 @@ class AdminsAndBackupTests(BaseTestCase):
             self.assertEqual(self.client.get(url).status_code, 200, url)
 
 
+class TelegramProfileTests(BaseTestCase):
+    def test_photo_and_premium(self):
+        # Mini App initData: rasm + Premium
+        u, _ = TgUser.upsert_from_telegram({"id": 55, "first_name": "Ali", "is_premium": True,
+                                            "photo_url": "https://t.me/i/userpic/320/ali.svg"})
+        self.assertTrue(u.is_premium)
+        self.assertEqual(u.photo_url, "https://t.me/i/userpic/320/ali.svg")
+        # Bot xabari: `from` da photo_url yo'q — rasm o'chmasligi kerak; is_premium yo'q = Premium emas
+        u, _ = TgUser.upsert_from_telegram({"id": 55, "first_name": "Ali"})
+        self.assertEqual(u.photo_url, "https://t.me/i/userpic/320/ali.svg")
+        self.assertFalse(u.is_premium)
+        # Faqat https havola saqlanadi
+        u, _ = TgUser.upsert_from_telegram({"id": 55, "first_name": "Ali", "photo_url": "javascript:alert(1)"})
+        self.assertEqual(u.photo_url, "")
+
+    def test_panel_shows_avatar(self):
+        from django.contrib.auth.models import User
+        User.objects.create_user("boss", password="Kuchli-parol-2026", is_staff=True, is_superuser=True)
+        u = TgUser.objects.create(tg_id=56, first_name="Vali", is_premium=True, photo_url="https://t.me/i/userpic/320/v.svg")
+        self.client.login(username="boss", password="Kuchli-parol-2026")
+        r = self.client.get(f"/boshqaruv/foydalanuvchilar/{u.uid}/")
+        self.assertContains(r, 'src="https://t.me/i/userpic/320/v.svg"')
+        self.assertContains(r, "Telegram Premium")
+        self.assertContains(self.client.get("/boshqaruv/foydalanuvchilar/?status=premium"), "Vali")
+        self.assertEqual(self.client.get("/boshqaruv/").status_code, 200)
+
+
 @override_settings(BOT_TOKEN=BOT_TOKEN, BOT_USERNAME="baraka_test_bot")
 class DebtLinkTests(ApiTestCase):
     """Qarzni bog'lash: havola → botda tasdiq → to'lov tasdig'i → uzish."""

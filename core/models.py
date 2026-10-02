@@ -16,7 +16,8 @@ class TgUser(models.Model):
     first_name = models.CharField("Ism", max_length=128, blank=True)
     last_name = models.CharField("Familiya", max_length=128, blank=True)
     username = models.CharField(max_length=64, blank=True)
-    photo_url = models.URLField(max_length=512, blank=True)
+    photo_url = models.URLField("Profil rasmi", max_length=512, blank=True)
+    is_premium = models.BooleanField("Telegram Premium", default=False)
 
     CURRENCIES = [
         ("UZS", "So'm"),
@@ -82,8 +83,14 @@ class TgUser(models.Model):
             "first_name": str(data.get("first_name") or "")[:128],
             "last_name": str(data.get("last_name") or "")[:128],
             "username": str(data.get("username") or "")[:64],
-            "photo_url": str(data.get("photo_url") or "")[:512],
+            # Telegram faqat Premium bo'lsa `is_premium: true` yuboradi, aks holda maydon umuman bo'lmaydi
+            "is_premium": data.get("is_premium") is True,
         }
+        # Rasm faqat Mini App initData'da keladi; botdagi `from` obyektida yo'q — u bilan o'chirib yubormaymiz.
+        # Faqat https havola (rasm sifatida panelda ko'rsatiladi)
+        if "photo_url" in data:
+            photo = str(data.get("photo_url") or "")[:512]
+            fields["photo_url"] = photo if photo.startswith("https://") else ""
         user = cls.objects.filter(tg_id=int(data["id"])).first()
         if user is None:
             try:

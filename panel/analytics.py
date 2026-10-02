@@ -162,6 +162,7 @@ def dashboard_insights():
                                            | Q(Exists(Debt.objects.filter(lender=u)))).count()),
         ("Majburiy xarajat qo'shgan", users.filter(Exists(RecurringExpense.objects.filter(user=u))).count()),
         ("Botdan foydalanadi", users.filter(bot_started=True, bot_blocked=False).count()),
+        ("Telegram Premium", users.filter(is_premium=True).count()),
     ]
     adoption = [{"label": l, "count": c, "pct": pct(c, total)} for l, c in adoption]
 

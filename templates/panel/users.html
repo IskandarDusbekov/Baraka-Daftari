@@ -13,6 +13,7 @@
     <option value="active7" {% if status == 'active7' %}selected{% endif %}>7 kunda faol</option>
     <option value="inactive30" {% if status == 'inactive30' %}selected{% endif %}>30 kundan beri kirmagan</option>
     <option value="loyal" {% if status == 'loyal' %}selected{% endif %}>Doimiy (10+ marta kirgan)</option>
+    <option value="premium" {% if status == 'premium' %}selected{% endif %}>Telegram Premium</option>
     <option value="no_income" {% if status == 'no_income' %}selected{% endif %}>Daromadni sozlamagan</option>
     <option value="rated" {% if status == 'rated' %}selected{% endif %}>Baho qoldirgan</option>
     <option value="blocked" {% if status == 'blocked' %}selected{% endif %}>Botni bloklagan</option>
@@ -38,7 +39,8 @@
     <tbody>
     {% for u in page %}
       <tr data-href="{% url 'panel:user' u.uid %}">
-        <td><a href="{% url 'panel:user' u.uid %}"><b>{{ u.display_name }}</b></a>{% if u.username %}<br><span class="p-muted">@{{ u.username }}</span>{% endif %}</td>
+        <td><div class="user-cell">{% include "panel/_avatar.html" with user=u %}
+          <span><a href="{% url 'panel:user' u.uid %}"><b>{{ u.display_name }}</b></a>{% if u.username %}<br><span class="p-muted">@{{ u.username }}</span>{% endif %}</span></div></td>
         <td class="mono">{{ u.tg_id }}</td>
         <td>{{ u.created_at|date:"d.m.Y" }}</td>
         <td>{{ u.last_seen|timesince }} oldin</td>

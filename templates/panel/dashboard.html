@@ -110,7 +110,7 @@
     <div class="p-card-head"><h2>Yangi ro'yxatdan o'tganlar</h2><a href="{% url 'panel:users' %}">Barchasi →</a></div>
     <ul class="entry-list">
       {% for u in latest %}
-      <li><span class="mini-avatar">{{ u.display_name|first|upper }}</span>
+      <li>{% include "panel/_avatar.html" with user=u %}
         <span class="el-main"><b><a href="{% url 'panel:user' u.uid %}">{{ u.display_name }}</a></b><small>{% if u.username %}@{{ u.username }} · {% endif %}{{ u.visits }} tashrif</small></span>
         <small class="p-muted nowrap">{{ u.created_at|date:"d.m H:i" }}</small></li>
       {% empty %}<li class="p-muted">Hali foydalanuvchi yo'q</li>{% endfor %}

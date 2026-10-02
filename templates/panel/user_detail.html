@@ -6,13 +6,15 @@
 {# ---------------------------------------------------------------- profil sarlavhasi #}
 <section class="profile">
   <div class="pf-main">
-    <span class="pf-avatar {% if not u.is_active %}off{% endif %}">{{ initials }}</span>
+    {% if u.is_active %}{% include "panel/_avatar.html" with user=u cls="pf-avatar" text=initials %}{% else %}{% include "panel/_avatar.html" with user=u cls="pf-avatar off" text=initials %}{% endif %}
     <div class="pf-id">
       <h1>{{ u.display_name }}</h1>
       <p class="p-muted">{% if u.username %}@{{ u.username }} · {% endif %}ID <span class="mono">{{ u.tg_id }}</span> · {{ u.get_currency_display }}</p>
       <div class="pf-tags">
         {% if not u.is_active %}<span class="tag red">Bloklangan</span>{% elif active_days %}<span class="tag green">Faol</span>{% else %}<span class="tag">30 kun kirmagan</span>{% endif %}
         {% if u.bot_blocked %}<span class="tag red">Botni bloklagan</span>{% elif u.bot_started %}<span class="tag blue">Bot faol</span>{% else %}<span class="tag">Botni ochmagan</span>{% endif %}
+        {% if u.is_premium %}<span class="tag premium"><svg class="ic"><use href="#i-star"/></svg>Telegram Premium</span>{% endif %}
+        {% if u.photo_url %}<a class="tag" href="{{ u.photo_url }}" target="_blank" rel="noopener noreferrer">Profil rasmi</a>{% endif %}
         {% if u.visits >= 10 %}<span class="tag gold">Sodiq · {{ u.visits }} tashrif</span>{% endif %}
         {% if lent %}<span class="tag green">Qarz bergan · {{ lent|length }}</span>{% endif %}
       </div>
