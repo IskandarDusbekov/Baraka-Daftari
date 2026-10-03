@@ -393,6 +393,17 @@ def logout_all(request):
 
 
 @endpoint(["POST"])
+def app_installed(request):
+    """Ilova telefonga o'rnatildi (PWA o'zidan ochildi yoki brauzer "o'rnatildi" dedi). Faqat birinchi marta yoziladi."""
+    user = request.tg_user
+    platform = choice_from(request.data, "platform", [("android", ""), ("ios", ""), ("desktop", "")], "desktop")
+    updated = TgUser.objects.filter(pk=user.pk, app_installed_at__isnull=True).update(app_installed_at=timezone.now())
+    if updated:
+        activity.log(user, "app_install", platform=platform)
+    return JsonResponse({"ok": True})
+
+
+@endpoint(["POST"])
 def set_currency(request):
     """Hisob valyutasini tanlash/o'zgartirish.
 
@@ -699,6 +710,10 @@ def recurring(request):
             raise ApiError("Nomi va summasini kiriting")
         item = RecurringExpense(user=user)
         recurring_fill(item, request.data)
+        today = timezone.localdate()
+        if item.day <= today.day and not request.data.get("this_month"):
+            # To'lov kuni bu oy o'tib ketgan — odatda foydalanuvchi uni allaqachon yozgan: ikki marta yozmaymiz
+            item.last_month = today.strftime("%Y-%m")
         item.save()
         services.ensure_recurring(user)
         item.refresh_from_db()
@@ -708,6 +723,7 @@ def recurring(request):
     return JsonResponse({
         "items": [recurring_json(r) for r in items],
         "total": sum(r.amount for r in items if r.active),
+        "suggestions": services.recurring_suggestions(user, items),
     })
 
 

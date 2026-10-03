@@ -122,6 +122,8 @@ def _dashboard_stats():
         bot_blocked=Count("id", filter=Q(bot_blocked=True)),
         disabled=Count("id", filter=Q(is_active=False)),
         income_set=Count("id", filter=~Q(income_type="")),
+        app_installed=Count("id", filter=Q(app_installed_at__isnull=False)),
+        app_installed_7=Count("id", filter=Q(app_installed_at__gte=now - dt.timedelta(days=7))),
     )
 
     start = today - dt.timedelta(days=29)
@@ -259,6 +261,8 @@ def users(request):
         qs = qs.filter(visits__gte=10)
     elif status == "premium":
         qs = qs.filter(is_premium=True)
+    elif status == "app":
+        qs = qs.filter(app_installed_at__isnull=False)
     qs = qs.order_by({"seen": "-last_seen", "old": "created_at", "visits": "-visits"}.get(sort, "-created_at"))
     qs = qs.annotate(
         lessons_done=Subquery(

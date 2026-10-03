@@ -1,7 +1,7 @@
 /* Hamyon: oy xulosasi, tezkor tugmalar (xarajat / kirim oynalari), o'zingga to'la, diagramma, tarix */
 (() => {
   'use strict';
-  const { api, esc, som, compact, ic, toast, haptic, withBusy, bindMoney, render, CATS, SOURCES } = B;
+  const { api, esc, num, som, compact, ic, toast, haptic, withBusy, bindMoney, render, CATS, SOURCES } = B;
 
   const params = new URLSearchParams(location.search);
   let month = /^\d{4}-\d{2}$/.test(params.get('oy') || '') ? params.get('oy') : B.monthKey();
@@ -13,7 +13,7 @@
 
   async function main() {
     // 'me' — hisob valyutasi har doim serverdagidek bo'lishi uchun (api() uni o'zi sinxronlaydi)
-    const [w] = await Promise.all([api(`wallet?month=${month}`), api('me')]);
+    const [w, , rec] = await Promise.all([api(`wallet?month=${month}`), api('me'), api('recurring')]);
     const t = w.totals;
     const p = t.save_percent;
     const isCurrent = month === B.monthKey();
@@ -51,6 +51,8 @@
             : `<span class="chip">${ic('check')} Bu oy to'landi</span>`}
         </div>
       </section>` : ''}
+
+      ${recurringCard(rec)}
 
       <section class="card">
         <div class="card-title"><h3><span class="h-ico purple">${ic('pie')}</span> Pul qayerga ketmoqda?</h3></div>
@@ -94,12 +96,73 @@
     const saveRest = page.querySelector('#save-rest');
     if (saveRest) saveRest.onclick = () => B.saveSheet(t.should_save - t.saved, null, 0, main);
 
+    bindRecurring(page, rec);
+
     // Boshqa sahifadagi "+ Kirim" / "Xarajatni yozing" havolalaridan kelinganda kerakli oyna ochiladi
     if (firstRender) {
       const open = { '#xarajat': addExpense, '#kirim': addIncome }[location.hash];
       if (open) { history.replaceState(null, '', location.pathname + location.search); open(); }
+      if (location.hash === '#doimiy') setTimeout(() => page.querySelector('#doimiy').scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
     }
     firstRender = false;
+  }
+
+  // ------------------------------------------------------------------ doimiy xarajatlar
+  const HIDDEN_KEY = 'baraka_rec_hidden'; // foydalanuvchi "kerak emas" degan takliflar
+  const hiddenSuggestions = () => { try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'); } catch (e) { return []; } };
+  const suggestionKey = (s) => `${s.category}:${s.name.toLowerCase()}`;
+
+  function recurringCard(rec) {
+    const hidden = hiddenSuggestions();
+    const sugg = rec.suggestions.filter((s) => !hidden.includes(suggestionKey(s)));
+    const now = new Date();
+    const nextLabel = (day) => {
+      // Keyingi to'lov sanasi: bu oy yozilgan bo'lsa — kelasi oy
+      const m = new Date(now.getFullYear(), now.getMonth() + (day < now.getDate() ? 1 : 0), 1).getMonth();
+      return `${day}-${B.MONTHS[m].toLowerCase()}`;
+    };
+    const rows = rec.items.map((r) => {
+      const c = CATS[r.category] || CATS.other;
+      const status = !r.active ? "To'xtatilgan"
+        : r.done_this_month ? `Har oy ${r.day}-kuni · bu oy yozildi`
+          : `Har oy ${r.day}-kuni · keyingisi ${nextLabel(r.day)}`;
+      return `<li class="entry editable ${r.active ? '' : 'off'}" data-rec="${r.id}">
+        <span class="e-icon" style="--c:${c.color}">${ic(c.icon)}</span>
+        <span class="e-main"><b>${esc(r.name)}</b><small>${status}</small></span>
+        <span class="e-amt minus">${num(r.amount)}</span>
+      </li>`;
+    }).join('');
+    return `<section class="card" id="doimiy">
+      <div class="card-title"><h3><span class="h-ico orange">${ic('repeat')}</span> Doimiy xarajatlar</h3>
+        ${rec.items.length ? `<span class="chip orange">${compact(rec.total)} / oy</span>` : ''}</div>
+      ${sugg.map((s, i) => `<div class="rec-suggest">
+          <span>${ic('bulb')} <b>«${esc(s.name)}»</b> — ${som(s.amount)} ${s.months} oy ketma-ket yozilgan. Har oy o'zi yozilsinmi?</span>
+          <div class="btn-row"><button class="btn sm" data-sugg="${i}">Ha, doimiy qilish</button>
+            <button class="btn ghost sm" data-sugg-x="${i}" style="flex:0 0 auto">Kerak emas</button></div>
+        </div>`).join('')}
+      ${rows ? `<ul class="entries">${rows}</ul>`
+        : `<p class="muted small">Ijara, kommunal, internet kabi har oy bir xil to'lovlarni bir marta kiriting — belgilangan kuni o'zi yoziladi.
+            Shunda oy boshida "majburiy to'lovlardan keyin qancha qoladi" aniq ko'rinadi.</p>`}
+      <button class="btn ghost block mt" id="rec-add">${ic('plus')} Doimiy xarajat qo'shish</button>
+    </section>`;
+  }
+
+  function bindRecurring(page, rec) {
+    const hidden = hiddenSuggestions();
+    const sugg = rec.suggestions.filter((s) => !hidden.includes(suggestionKey(s)));
+    page.querySelector('#rec-add').onclick = () => B.recurringSheet(null, main);
+    page.querySelectorAll('[data-rec]').forEach((li) => {
+      li.onclick = () => B.recurringSheet(rec.items.find((r) => r.id === Number(li.dataset.rec)), main);
+    });
+    page.querySelectorAll('[data-sugg]').forEach((b) => { b.onclick = () => B.recurringSheet(null, main, sugg[Number(b.dataset.sugg)]); });
+    page.querySelectorAll('[data-sugg-x]').forEach((b) => {
+      b.onclick = () => {
+        const list = hiddenSuggestions();
+        list.push(suggestionKey(sugg[Number(b.dataset.suggX)]));
+        try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(list.slice(-50))); } catch (e) { /* private mode */ }
+        b.closest('.rec-suggest').remove();
+      };
+    });
   }
 
   /** Tarix: 20 tadan sahifalab ("Ko'proq ko'rsatish") va turi bo'yicha filtr */

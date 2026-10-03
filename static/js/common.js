@@ -378,6 +378,19 @@
     }, 4000);
   }
 
+  /** Admin panel uchun "nechta odam o'rnatdi": o'rnatilgan ilovadan birinchi ochilganda bir marta yuboriladi */
+  const APP_REPORTED = 'baraka_app_reported';
+  const platform = () => (/iphone|ipad|ipod/i.test(navigator.userAgent) ? 'ios' : /android/i.test(navigator.userAgent) ? 'android' : 'desktop');
+  function reportAppInstall(force) {
+    const key = `${APP_REPORTED}:${store.get(UID_KEY) || ''}`; // bitta telefonda ikki akkaunt bo'lsa ham
+    if (!token || store.get(key) === '1') return;
+    if (!force && !(window.BarakaPWA && BarakaPWA.standalone)) return;
+    api('me/app-installed', { method: 'POST', body: { platform: platform() } })
+      .then(() => store.set(key, '1')).catch(() => {});
+  }
+  // Brauzer "o'rnatildi" desa (Android/kompyuter Chrome) — darhol
+  window.addEventListener('appinstalled', () => reportAppInstall(true));
+
   /** Bosh sahifadagi doimiy karta (oynani yopgan odam ham keyin o'rnata olsin) */
   function installCardHtml() {
     if (!canInstall() || (Date.now() - (Number(store.get(INSTALL_CARD)) || 0) < 30 * DAY)) return '';
@@ -778,6 +791,75 @@
     setTimeout(() => $('#inc-amt').focus(), 350);
   }
 
+  // ------------------------------------------------------------------ doimiy (har oylik) xarajatlar
+  const RECURRING_PRESETS = [
+    ['Uy ijarasi', 'rent'], ['Kommunal', 'utility'], ['Internet', 'phone'], ['Telefon', 'phone'],
+    ["Bog'cha / maktab", 'education'], ['Transport', 'transport'],
+  ];
+
+  /** Doimiy xarajat qo'shish/tahrirlash. item — tahrirlash uchun; preset — taklifdan to'ldirish uchun */
+  function recurringSheet(item, after, preset) {
+    const isEdit = !!item;
+    const src = item || preset || {};
+    let cat = src.category || 'rent';
+    let need = src.need || 'zarur';
+    const body = openSheet(`
+      <h2>${isEdit ? 'Doimiy xarajat' : "Doimiy xarajat qo'shish"}</h2>
+      ${isEdit ? '' : `<p class="muted small">Har oy bir xil bo'ladigan to'lovni bir marta kiriting — belgilangan kuni Hamyonga o'zi yoziladi.</p>
+        <div class="quick">${RECURRING_PRESETS.map(([n, c]) => `<button type="button" data-preset="${esc(n)}" data-pcat="${c}">${esc(n)}</button>`).join('')}</div>`}
+      <label class="field"><span>Nomi</span><input class="input" id="r-name" maxlength="100" placeholder="Masalan: Uy ijarasi" value="${esc(src.name || '')}"></label>
+      <label class="field"><span>Har oy summasi</span><div class="money"><input class="input" id="r-amt" inputmode="numeric" placeholder="${ph('mid')}" value="${src.amount || ''}"></div>
+        <small class="muted small">Kommunal kabi summasi biroz o'zgarsa, taxminiysini yozing — keyin Tarixda to'g'rilaysiz.</small></label>
+      <label class="field"><span>Oyning qaysi kuni to'lanadi? (1–28)</span><input class="input" id="r-day" inputmode="numeric" maxlength="2" value="${src.day || 1}"></label>
+      <div><span class="field-label">Turi</span>
+        <div class="cats">${Object.entries(CATS).map(([k, c]) => `<button type="button" class="cat ${k === cat ? 'active' : ''}" data-cat="${k}" style="--c:${c.color}">${ic(c.icon, 'ci')}${c.label}</button>`).join('')}</div>
+      </div>
+      <div><span class="field-label">Bu xarajat qanday?</span>
+        <div class="needs">${Object.entries(NEEDS).map(([k, n]) => `<button type="button" class="need need-${k} ${k === need ? 'active' : ''}" data-need="${k}"><b>${n.label}</b><small>${n.hint}</small></button>`).join('')}</div>
+      </div>
+      ${isEdit ? `<label class="check"><input type="checkbox" id="r-active" ${item.active ? 'checked' : ''}> Faol (har oy yozilsin)</label>`
+        : `<label class="check" id="r-now-wrap"><input type="checkbox" id="r-now"> Bu oyniki ham hozir yozilsin <small class="muted">(agar hali yozmagan bo'lsangiz)</small></label>`}
+      <button class="btn orange big" id="r-save">${isEdit ? 'Saqlash' : `${ic('plus')} Qo'shish`}</button>
+      ${isEdit ? `<button class="btn danger block" id="r-del">${ic('trash')} O'chirish</button>` : ''}`);
+    const $ = (s) => body.querySelector(s);
+    const amt = bindMoney($('#r-amt'));
+    const nowWrap = $('#r-now-wrap');
+    if (nowWrap) {
+      // To'lov kuni bu oy hali kelmagan bo'lsa — o'z vaqtida yoziladi, belgi kerak emas
+      const sync = () => { nowWrap.hidden = (Number($('#r-day').value) || 1) > new Date().getDate(); };
+      $('#r-day').addEventListener('input', sync);
+      sync();
+    }
+    const pickCat = (k) => { cat = k; body.querySelectorAll('[data-cat]').forEach((x) => x.classList.toggle('active', x.dataset.cat === k)); };
+    body.querySelectorAll('[data-cat]').forEach((b) => { b.onclick = () => pickCat(b.dataset.cat); });
+    body.querySelectorAll('[data-preset]').forEach((b) => {
+      b.onclick = () => { $('#r-name').value = b.dataset.preset; pickCat(b.dataset.pcat); haptic('light'); $('#r-amt').focus(); };
+    });
+    body.querySelectorAll('[data-need]').forEach((b) => {
+      b.onclick = () => { need = b.dataset.need; body.querySelectorAll('[data-need]').forEach((x) => x.classList.toggle('active', x === b)); };
+    });
+    $('#r-save').onclick = (ev) => withBusy(ev.currentTarget, async () => {
+      const payload = { name: $('#r-name').value.trim(), amount: amt(), category: cat, need, day: Number($('#r-day').value) || 1 };
+      if (!payload.name) { toast('Nomini kiriting', true); return; }
+      if (!payload.amount) { toast('Summani kiriting', true); return; }
+      if ($('#r-active')) payload.active = $('#r-active').checked;
+      if ($('#r-now')) payload.this_month = $('#r-now').checked;
+      try {
+        await api(isEdit ? `recurring/${item.id}` : 'recurring', { method: 'POST', body: payload });
+        closeSheet(true); haptic('success');
+        toast(isEdit ? 'Saqlandi' : `Qo'shildi: har oy ${payload.day}-kuni yoziladi`);
+        if (after) await after();
+      } catch (e) { toast(e.message, true); }
+    });
+    const del = $('#r-del');
+    if (del) {
+      del.onclick = async () => {
+        if (!(await confirmAsk(`«${item.name}» endi har oy yozilmaydi. Avval yozilgan xarajatlar qoladi.`, { title: "O'chirasizmi?", ok: "O'chirish", danger: true }))) return;
+        try { await api(`recurring/${item.id}`, { method: 'DELETE' }); closeSheet(true); toast("O'chirildi"); if (after) await after(); } catch (e) { toast(e.message, true); }
+      };
+    }
+  }
+
   /** Telegram'da ulashish oynasi (Mini App ichida — Telegram'ning o'zida, brauzerda — yangi oynada) */
   function share(url, text) {
     const link = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text || '')}`;
@@ -936,7 +1018,7 @@
   window.B = {
     compactMoney,
     saveSheet, incomeSetupSheet, expenseSheet, incomeSheet, entryRow, share, shareSheet, SOURCES,
-    maybeAskInstall, installCardHtml, bindInstallCard, expenseFormHtml, bindExpenseForm, CATS, NEEDS, BUCKETS,
+    maybeAskInstall, installCardHtml, bindInstallCard, recurringSheet, reportAppInstall, expenseFormHtml, bindExpenseForm, CATS, NEEDS, BUCKETS,
     tg, IN_TG, CFG, MONTHS, DISCLAIMER,
     esc, num, som, digits, compact, pad, todayISO, monthKey, monthLabel, sleep, ic, haptic,
     CURRENCIES, setCurrency, curSign, ph, otherCurrency, get currency() { return currency; },

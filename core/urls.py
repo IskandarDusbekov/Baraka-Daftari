@@ -29,6 +29,7 @@ urlpatterns = [
     path("api/me", api.me),
     path("api/me/currency", api.set_currency),
     path("api/me/logout-all", api.logout_all),
+    path("api/me/app-installed", api.app_installed),
     path("api/feedback", api.feedback),
     path("api/feedback/shown", api.feedback_shown),
     path("api/rates", api.usd_rate),

@@ -330,6 +330,36 @@ def savings_summary(user):
     }
 
 
+def recurring_suggestions(user, existing=None, limit=3):
+    """Doimiy qilib qo'yish mumkin bo'lgan xarajatlar: oxirgi ~3 oyda kamida 2 xil oyda bir xil izoh
+    bilan yozilgan, summasi deyarli o'zgarmagan (±25%) va har kuni emas, oyiga 1–2 marta bo'ladigan."""
+    from collections import Counter, defaultdict
+
+    today = timezone.localdate()
+    start = (today.replace(day=1) - dt.timedelta(days=70)).replace(day=1)
+    taken = {r.name.strip().lower() for r in (existing if existing is not None else user.recurring.all())}
+    groups = defaultdict(list)
+    for e in user.expenses.filter(date__gte=start).exclude(note="").only("id", "amount", "category", "need", "note", "date"):
+        groups[(e.category, e.note.strip().lower())].append(e)
+
+    found = []
+    for (category, key), rows in groups.items():
+        if key in taken or len(key) < 2:
+            continue
+        months = {(r.date.year, r.date.month) for r in rows}
+        amounts = [r.amount for r in rows]
+        if len(months) < 2 or len(rows) > len(months) * 2 or max(amounts) > min(amounts) * 1.25:
+            continue
+        latest = max(rows, key=lambda r: (r.date, r.id))
+        found.append({
+            "name": latest.note.strip()[:100], "amount": latest.amount, "category": category,
+            "need": latest.need or "zarur", "months": len(months),
+            "day": min(Counter(r.date.day for r in rows).most_common(1)[0][0], 28),
+        })
+    found.sort(key=lambda s: (-s["months"], -s["amount"]))
+    return found[:limit]
+
+
 def ensure_recurring(user, today=None):
     """Kuni kelgan oylik majburiy xarajatlarni shu oy uchun bir marta yozadi."""
     today = today or timezone.localdate()

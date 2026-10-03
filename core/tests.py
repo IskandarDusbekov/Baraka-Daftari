@@ -322,7 +322,9 @@ class JamgarmaTests(ApiTestCase):
 class RecurringTests(ApiTestCase):
     def test_created_once_when_day_comes(self):
         today = timezone.localdate()
-        r = self.post("/api/recurring", {"name": "Ijara", "amount": 3_000_000, "category": "rent", "day": 1}).json()
+        # "Bu oyniki ham yozilsin" belgilangan — kuni o'tgan to'lov shu oy uchun bir marta yoziladi
+        r = self.post("/api/recurring", {"name": "Ijara", "amount": 3_000_000, "category": "rent", "day": 1,
+                                         "this_month": True}).json()
         self.assertTrue(r["item"]["done_this_month"])
         self.get("/api/me")
         self.get("/api/wallet")
@@ -330,6 +332,38 @@ class RecurringTests(ApiTestCase):
         self.assertEqual(rent.count(), 1)
         self.assertEqual(rent.first().date, today.replace(day=1))
         self.assertEqual(rent.first().need, "zarur")
+
+    def test_past_day_skips_this_month_by_default(self):
+        # Odatda foydalanuvchi bu oyning to'lovini allaqachon qo'lda yozgan — ikki marta yozilmasin
+        r = self.post("/api/recurring", {"name": "Internet", "amount": 120_000, "category": "phone", "day": 1}).json()
+        self.assertTrue(r["item"]["done_this_month"])
+        self.get("/api/me")
+        self.assertFalse(TgUser.objects.get(pk=self.user.pk).expenses.filter(category="phone").exists())
+
+    def test_suggestions_from_repeated_expenses(self):
+        from core.models import Expense
+        today = timezone.localdate()
+        prev = (today.replace(day=1) - dt.timedelta(days=1)).replace(day=5)
+        prev2 = (prev.replace(day=1) - dt.timedelta(days=1)).replace(day=5)
+        for d in (prev2, prev):
+            Expense.objects.create(user=self.user, amount=120_000, category="phone", note="Internet", date=d)
+        # Har kuni olinadigan narsa (non) taklif qilinmaydi
+        for i in range(8):
+            Expense.objects.create(user=self.user, amount=5_000, category="food", note="Non", date=prev - dt.timedelta(days=i))
+            Expense.objects.create(user=self.user, amount=5_000, category="food", note="Non", date=today - dt.timedelta(days=min(i, today.day - 1)))
+        sugg = self.get("/api/recurring").json()["suggestions"]
+        self.assertEqual([s["name"] for s in sugg], ["Internet"])
+        self.assertEqual((sugg[0]["amount"], sugg[0]["category"], sugg[0]["day"]), (120_000, "phone", 5))
+        # Doimiy qilib qo'yilgach — taklif yo'qoladi
+        self.post("/api/recurring", {"name": "Internet", "amount": 120_000, "category": "phone", "day": 5})
+        self.assertEqual(self.get("/api/recurring").json()["suggestions"], [])
+
+    def test_app_installed_recorded_once(self):
+        self.post("/api/me/app-installed", {"platform": "android"})
+        self.post("/api/me/app-installed", {"platform": "ios"})
+        self.user.refresh_from_db()
+        self.assertIsNotNone(self.user.app_installed_at)
+        self.assertEqual(self.user.activity.filter(action="app_install").count(), 1)
 
     def test_pending_reduces_free_money(self):
         tenth = timezone.localdate().replace(day=10)  # to'lov kuni (28) hali kelmagan

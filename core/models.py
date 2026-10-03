@@ -18,6 +18,8 @@ class TgUser(models.Model):
     username = models.CharField(max_length=64, blank=True)
     photo_url = models.URLField("Profil rasmi", max_length=512, blank=True)
     is_premium = models.BooleanField("Telegram Premium", default=False)
+    # Telefonga ilova (PWA) sifatida o'rnatib, undan birinchi marta ochgan vaqti
+    app_installed_at = models.DateTimeField("Ilovani o'rnatgan", null=True, blank=True)
 
     CURRENCIES = [
         ("UZS", "So'm"),
@@ -432,6 +434,7 @@ class ActivityLog(models.Model):
         ("debt_invite", "Qarz uchun havola yaratdi"),
         ("debt_link", "Qarzni tasdiqladi (bog'landi)"),
         ("debt_unlink", "Qarz bog'lanishini uzdi"),
+        ("app_install", "Ilovani telefonga o'rnatdi"),
     ]
 
     user = models.ForeignKey(TgUser, on_delete=models.CASCADE, related_name="activity")

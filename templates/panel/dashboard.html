@@ -10,6 +10,8 @@
   <div class="kpi ico"><i class="k-ico orange"><svg class="ic"><use href="#i-flame"/></svg></i><span>Faol bugun</span><b>{{ counts.active_today|num }}</b><small>7 kun: {{ counts.active_7|num }} · 30 kun: {{ counts.active_30|num }}</small></div>
   <div class="kpi ico"><i class="k-ico teal"><svg class="ic"><use href="#i-repeat"/></svg></i><span>Har kuni qaytadi</span><b>{{ stickiness }}%</b><small>kunlik / oylik faollar ({{ dau|num }} / {{ mau|num }})</small></div>
   <div class="kpi ico"><i class="k-ico blue"><svg class="ic"><use href="#i-send"/></svg></i><span>Botni ishlatadi</span><b>{{ counts.bot_started|num }}</b><small>bloklagan: {{ counts.bot_blocked|num }}</small></div>
+  <a class="kpi ico link" href="{% url 'panel:users' %}?status=app"><i class="k-ico green"><svg class="ic"><use href="#i-phone"/></svg></i><span>Ilovani o'rnatgan</span><b>{{ counts.app_installed|num }}</b>
+    <small>{{ counts.app_installed|pct:counts.total }}% · 7 kunda +{{ counts.app_installed_7|num }}</small></a>
   <a class="kpi ico link" href="{% url 'panel:feedback' %}"><i class="k-ico gold"><svg class="ic"><use href="#i-star"/></svg></i><span>O'rtacha baho</span>
     <b>{% if rating.avg %}{{ rating.avg|floatformat:1 }} ★{% else %}—{% endif %}</b>
     <small>{{ rating.c|num }} ta baho{% if rating.unread %} · <em class="new">{{ rating.unread }} yangi</em>{% endif %}</small></a>

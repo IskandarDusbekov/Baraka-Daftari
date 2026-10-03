@@ -131,6 +131,7 @@
     // bu safar baho so'ralmasa — ilovani telefonga o'rnatish taklif qilinadi
     else if (!B.maybeAskRating(d)) B.maybeAskInstall();
     B.bindInstallCard(page);
+    B.reportAppInstall();
   }
 
   /** «Boshlash yo'li»: yangi foydalanuvchi uchun qadamlar va keyingisi */
